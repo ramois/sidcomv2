@@ -2,13 +2,14 @@
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
-    "id_operador" INTEGER NOT NULL,
+    "password" TEXT,
+    "id_operador" INTEGER,
     "nombre" TEXT NOT NULL,
     "apellidos" TEXT NOT NULL,
     "ci" TEXT NOT NULL,
     "celular" INTEGER NOT NULL,
     "rol" INTEGER NOT NULL,
+    "estado" INTEGER DEFAULT 0,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
