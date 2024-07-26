@@ -1,6 +1,6 @@
 
 ## Uso
-1. Cloná el repositorio haciendo git clone https://github.com/sergiecode/proyecto-curso-node-yt
+1. Cloná el repositorio haciendo git clone https://github.com/ramois/sidcomv2
 2. Abrí el proyecto en su editor de código
 3. npm init -y
 4. npm install express jsonwebtoken bcryptjs @prisma/client dotenv typescript
