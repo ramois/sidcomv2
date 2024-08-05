@@ -71,5 +71,75 @@ model Operator {
   ci_resp_tmuestra String?
   celular_resp_tmuestra Int?
   correo_resp_tmuestra String?
+
+  // Relaciones
+  samples              Sample[]   // Una entidad Operator puede tener muchos Sample
+
+}
+model Sample {
+  id                Int     @id @default(autoincrement())
+  fecha_emision     DateTime @default(now())
+  ubi_geografica    String
+  lugar_verificacion String
+  id_operador       Int
+  responsable       String
+  lotes             String
+  tipo_muestra      Int
+  presentacion      Int
+  sacos             Int
+  camiones          Int
+  peso_neto         Decimal 
+  peso_parcial      Decimal 
+  id_municipio      Int
+  senerecom         String
+  tipo_agranel      Int? @default(0)
+  tipo_emsacado     Int? @default(0)
+  tipo_lingotes     Int? @default(0)
+  tipo_sal          Int? @default(0)
+  tipo_otr          Int? @default(0)
+  observaciones     String?
+  estado            Int
+  operador             Operator    @relation(fields: [id_operador], references: [id])
+  minerales         SampleMineral[]
+    // Definir relación uno a uno con FormExt
+  formExt          FormExt?   @relation("SampleFormExt")
+  formExtId        Int?       @unique
 }
 
+model Mineral {
+  id          Int    @id @default(autoincrement())
+  nombre      String
+  sigla       String
+  descripcion String
+  estado      Int
+  sample  SampleMineral[]
+}
+
+model SampleMineral {
+  sampleId    Int
+  mineralId   Int
+  ley         Int
+  unidad      String
+  sample      Sample @relation(fields: [sampleId], references: [id])
+  mineral     Mineral   @relation(fields: [mineralId], references: [id])
+
+  @@id([sampleId, mineralId])
+}
+model FormExt {
+  id                   Int       @id @default(autoincrement())
+  id_sample            Int       @unique
+  m03                  String
+  nro_factura_exportacion Int
+  laboratorio          String
+  cod_analisis         Int
+  des_comprador        String
+  des_aduana           String
+  des_pais             String
+  tipo_transporte      String
+  placa                String
+  nom_conductor        String
+  licencia             String
+  observaciones        String?
+  // Definir relación uno a uno con Sample
+  sample               Sample   @relation("SampleFormExt", fields: [id_sample], references: [id])
+}

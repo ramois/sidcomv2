@@ -141,23 +141,37 @@ export const getOperatorById= async (req: Request, res: Response): Promise<void>
 
 export const updateOperators = async (req: Request, res: Response): Promise<void> => {
     const operatorId = parseInt(req.params.id)
-    const { razon_social, nit,nim_niar } = req.body
+    const { razon_social, nit,nim_niar,nro_personeria,nro_matricula_seprec,fecha_exp_seprec,tipo_doc_creacion,doc_creacion } = req.body
     try {
 
         let dataToUpdate: any = { ...req.body }
 
         if (razon_social) {
             //const hashedPassword = await hashPassword(password)
-            dataToUpdate.password = razon_social
+            dataToUpdate.razon_social = razon_social
         }
 
         if (nit) {
-            dataToUpdate.email = nit
+            dataToUpdate.nit = nit
         }
         if (nim_niar) {
-            dataToUpdate.email = nim_niar
+            dataToUpdate.nim_niar = nim_niar
         }
-
+        if (nro_personeria) {
+            dataToUpdate.nro_personeria = nro_personeria
+        }
+        if (nro_matricula_seprec) {
+            dataToUpdate.nro_matricula_seprec = nro_matricula_seprec
+        }
+        if (fecha_exp_seprec) {
+            dataToUpdate.fecha_exp_seprec = fecha_exp_seprec
+        }
+        if (tipo_doc_creacion) {
+            dataToUpdate.tipo_doc_creacion = tipo_doc_creacion
+        }
+        if (doc_creacion) {
+            dataToUpdate.doc_creacion = doc_creacion
+        }
         const operator = await prisma.update({
             where: {
                 id: operatorId
