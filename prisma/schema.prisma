@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  password    String? // Contraseña opcional
+  id_operador Int?
+  nombre  String
+  apellidos  String
+  ci  String
+  celular  Int
+  rol  Int
+  estado      Int?    @default(0) // Valor predeterminado para estado
+
+}
+model Operator {
+  id    Int     @id @default(autoincrement())
+  razon_social String  @unique
+  nit Int
+  nim_niar Int
+  nro_nim String
+  fecha_exp_nim DateTime 
+  tipo_operador Int
+  nro_personeria String?
+  nro_matricula_seprec String?
+  fecha_exp_seprec DateTime?
+  tipo_doc_creacion Int?
+  doc_creacion String?
+  dl_departamento Int
+  dl_municipio Int
+  dl_direccion String
+  dl_ubicacion String
+  correo_inst String?
+  tel_fijo String?
+  celular Int
+  celular_2 Int?
+  act_exploracion Int? @default(0)
+  act_comer_interna Int? @default(0)
+  act_comer_externa Int? @default(0)
+  act_industrializacion Int? @default(0)
+  act_tras_colas Int? @default(0)
+  act_explotacion Int? @default(0)
+  act_ben_concentracion Int? @default(0)
+  act_refinacion Int? @default(0)
+  act_fundicion Int? @default(0)
+  tipo_explotacion Int?
+  denominacion_area String?
+  nro_codigo_unico String?
+  nro_cuadricula String?
+  municipio_origen String?
+  nro_ruex String?
+  verif_cert_liberacion Int?
+  nro_res_ministerial Int?
+  nombre_resp_for101 String?
+  ci_resp_for101 String?
+  celular_resp_for101 Int?
+  correo_resp_for101 String?
+  nombre_resp_tmuestra String?
+  ci_resp_tmuestra String?
+  celular_resp_tmuestra Int?
+  correo_resp_tmuestra String?
+
+  // Relaciones
+  samples              Sample[]   // Una entidad Operator puede tener muchos Sample
+
+}
+model Sample {
+  id                Int     @id @default(autoincrement())
+  fecha_emision     DateTime @default(now())
+  ubi_geografica    String
+  lugar_verificacion String
+  id_operador       Int
+  responsable       String
+  lotes             String
+  tipo_muestra      Int
+  presentacion      Int
+  sacos             Int
+  camiones          Int
+  peso_neto         Decimal 
+  peso_parcial      Decimal 
+  id_municipio      Int
+  senerecom         String
+  tipo_agranel      Int? @default(0)
+  tipo_emsacado     Int? @default(0)
+  tipo_lingotes     Int? @default(0)
+  tipo_sal          Int? @default(0)
+  tipo_otr          Int? @default(0)
+  observaciones     String?
+  estado            Int
+  operador             Operator    @relation(fields: [id_operador], references: [id])
+  minerales         SampleMineral[]
+    // Definir relación uno a uno con FormExt
+  formExt          FormExt?   @relation("SampleFormExt")
+  formExtId        Int?       @unique
+}
+
+model Mineral {
+  id          Int    @id @default(autoincrement())
+  nombre      String
+  sigla       String
+  descripcion String
+  estado      Int
+  sample  SampleMineral[]
+}
+
+model SampleMineral {
+  sampleId    Int
+  mineralId   Int
+  ley         Int
+  unidad      String
+  sample      Sample @relation(fields: [sampleId], references: [id])
+  mineral     Mineral   @relation(fields: [mineralId], references: [id])
+
+  @@id([sampleId, mineralId])
+}
+model FormExt {
+  id                   Int       @id @default(autoincrement())
+  id_sample            Int       @unique
+  m03                  String
+  nro_factura_exportacion Int
+  laboratorio          String
+  cod_analisis         Int
+  des_comprador        String
+  des_aduana           String
+  des_pais             String
+  tipo_transporte      String
+  placa                String
+  nom_conductor        String
+  licencia             String
+  observaciones        String?
+  // Definir relación uno a uno con Sample
+  sample               Sample   @relation("SampleFormExt", fields: [id_sample], references: [id])
+}
