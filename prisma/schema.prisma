@@ -74,6 +74,7 @@ model Operator {
 
   // Relaciones
   samples              Sample[]   // Una entidad Operator puede tener muchos Sample
+  formInt              FormInt[]   // Una entidad Operator puede tener muchos FormInt
 
 }
 model Sample {
@@ -113,9 +114,11 @@ model Mineral {
   descripcion String
   estado      Int
   sample  SampleMineral[]
+  formInt  FormIntMineral[]
 }
 
 model SampleMineral {
+  id          Int      @id @default(autoincrement())
   sampleId    Int
   mineralId   Int
   ley         Int
@@ -123,7 +126,7 @@ model SampleMineral {
   sample      Sample @relation(fields: [sampleId], references: [id])
   mineral     Mineral   @relation(fields: [mineralId], references: [id])
 
-  @@id([sampleId, mineralId])
+  //@@id([sampleId, mineralId])
 }
 model FormExt {
   id                   Int       @id @default(autoincrement())
@@ -142,4 +145,38 @@ model FormExt {
   observaciones        String?
   // Definir relación uno a uno con Sample
   sample               Sample   @relation("SampleFormExt", fields: [id_sample], references: [id])
+}
+model FormInt {
+  id                Int       @id @default(autoincrement())
+  id_operador       Int
+  lotes             String
+  presentacion      Int
+  cantidad          Int?
+  peso_neto         Decimal 
+  tara              Int?
+  humedad           Int?
+  merma             Int?
+  minerales         FormIntMineral[]
+  id_municipio_origen      String
+  des_tipo          Int
+  des_comprador        String?
+  des_planta           String?
+  id_municipio_destino String
+  tipo_transporte      String
+  placa                String
+  nom_conductor        String
+  licencia             String
+  nro_viajes           Int?
+  observaciones        String?
+  operador             Operator    @relation(fields: [id_operador], references: [id])
+}
+model FormIntMineral {
+  id          Int      @id @default(autoincrement())
+  formIntId    Int
+  mineralId   Int
+  ley         Int?
+  unidad      String?
+  formInt     FormInt @relation(fields: [formIntId], references: [id])
+  mineral     Mineral   @relation(fields: [mineralId], references: [id])
+  //@@id([formIntId, mineralId])
 }
