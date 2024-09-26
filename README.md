@@ -10,8 +10,8 @@
 8. npx prisma init
 9. npx prisma generate
 10. Agregar los modelos en schema.prisma
-11. npmx prisma migrate dev
-12. docker-compose up -d
+11. docker-compose up -d
+12. npx prisma migrate dev 
 13. Agregar los siguientes scripts: "dev": "tsnd --respawn --clear src/app.ts",   "build": "rimraf ./dist && tsc",   "start": "npm run build && node dist/app.js"
 
 ## Requiere:
