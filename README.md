@@ -5,14 +5,9 @@
 3. npm init -y
 4. npm install express jsonwebtoken bcryptjs @prisma/client dotenv typescript
 5. npm install --save-dev ts-node-dev @types/express @types/jsonwebtoken @types/bcryptjs @types/node rimraf prisma
-6. npx tsc --init --outDir dist/ --rootDir src
-7. Agregar carpetas excluídas e incluídas al archivo de configuración de TypeScript "exclude": ["node_modules","dist" ], "include": ["src"] 
-8. npx prisma init
-9. npx prisma generate
-10. Agregar los modelos en schema.prisma
-11. docker-compose up -d
-12. npx prisma migrate dev 
-13. Agregar los siguientes scripts: "dev": "tsnd --respawn --clear src/app.ts",   "build": "rimraf ./dist && tsc",   "start": "npm run build && node dist/app.js"
+6. docker-compose up -d
+7. npx prisma migrate dev 
+8. En packege.json agregar los siguientes scripts : "dev": "tsnd --respawn --clear src/server.ts",   "build": "rimraf ./dist && tsc",   "start": "node dist/server.js"
 
 ## Requiere:
 1. NODE: Se debe instalar NODE en el sistema operativo
