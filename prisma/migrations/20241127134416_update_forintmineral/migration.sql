@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "FormIntMineral" ALTER COLUMN "ley" SET DATA TYPE DECIMAL(65,30);

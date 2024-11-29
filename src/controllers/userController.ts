@@ -6,7 +6,7 @@ import prisma from '../models/user'
 
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        let { email, password,id_operador,nombre,apellidos,ci,celular,rol,estado} = req.body
+        let { email, password,operador_id,nombre,apellidos,ci,celular,rol_id,estado} = req.body
         if (!email) {
             res.status(400).json({ message: 'El email es obligatorio' })
             return
@@ -17,7 +17,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         }*/
         //let password1 = req.body.password;
 
-        if (id_operador !== null && !password) {
+        if (operador_id !== null && !password) {
             // Generar una contraseña aleatoria si id_operador es diferente de null
            password = crypto.randomBytes(8).toString('hex'); // 16 caracteres hexadecimales
         }
@@ -28,13 +28,14 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
                 data: {
                     email,
                     password: hashedPassword,
-                    id_operador,
                     nombre,
                     apellidos,
                     ci,
                     celular,
-                    rol,
-                    estado
+                    rol_id,
+                    operador_id,
+                    estado,
+                    created_at: new Date()
                 }
             }
         )
@@ -80,11 +81,11 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const userId = parseInt(req.params.id)
-    const { email, password,id_operador,nombre,apellidos,ci,celular,rol } = req.body
+    const { email, password,nombre,apellidos,ci,celular,rol_id,operador_id,estado } = req.body
     try {
 
         let dataToUpdate: any = { ...req.body }
-
+        dataToUpdate.updated_at = new Date(); // Fecha y hora actual
         if (password) {
             const hashedPassword = await hashPassword(password)
             dataToUpdate.password = hashedPassword
@@ -93,8 +94,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         if (email) {
             dataToUpdate.email = email
         }
-        if (id_operador) {
-            dataToUpdate.id_operador = id_operador
+        if (operador_id) {
+            dataToUpdate.operador_id = operador_id
         }
         if (nombre) {
             dataToUpdate.nombre = nombre
@@ -108,8 +109,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         if (celular) {
             dataToUpdate.celular = celular
         }
-        if (rol) {
-            dataToUpdate.rol = rol
+        if (rol_id) {
+            dataToUpdate.rol_id = rol_id
+        }
+        if (estado) {
+            dataToUpdate.estado = estado
         }
         const user = await prisma.update({
             where: {
