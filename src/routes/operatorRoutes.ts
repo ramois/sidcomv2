@@ -1,10 +1,10 @@
 import express, { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
-import { createOperators, deleteOperators, getAllOperators, getOperatorById, updateOperators } from '../controllers/operatorController'
+import { createOperators, deleteOperators, getAllOperators, getOperatorById, updateOperators, getAllOperatorsSimple, getOperatorHash } from '../controllers/operatorController'
 
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret'
-
+router.get('/verificacion', getOperatorHash)
 //Middleware de JWT para ver si estamos autenticados
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization']
@@ -32,6 +32,7 @@ router.put('/:id', authenticateToken,  ()=>{return console.log('post')})
 router.delete('/:id', authenticateToken, ()=>{return console.log('post')})*/
 router.post('/', authenticateToken, createOperators)
 router.get('/', authenticateToken, getAllOperators)
+router.get('/operators-simple', authenticateToken, getAllOperatorsSimple)
 router.get('/:id', authenticateToken, getOperatorById)
 router.put('/:id', authenticateToken, updateOperators)
 router.delete('/:id', authenticateToken,deleteOperators)

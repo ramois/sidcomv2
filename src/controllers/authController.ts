@@ -4,9 +4,8 @@ import { comparePasswords, hashPassword } from "../services/password.services";
 import prisma from "../models/user";
 import { generateToken } from "../services/auth.services";
 
-
 export const register = async(req: Request,res: Response): Promise<void>=>{
-    let {email, password, id_operador,nombre,apellidos,ci,celular,rol,estado}=req.body
+    let {email, password,nombre,apellidos,ci,celular,rol_id,operador_id,estado}=req.body
     try {
         //if (!email) throw new Error('el email es obligatorio')
         //if (!password) throw new Error('el password es obligatorio')
@@ -18,7 +17,7 @@ export const register = async(req: Request,res: Response): Promise<void>=>{
             res.status(400).json({ message: 'El password es obligatorio' })
             return
         }*/
-            if (id_operador !== null && !password) {
+            if (operador_id !== null && !password) {
                 // Generar una contraseña aleatoria si id_operador es diferente de null
                password = crypto.randomBytes(8).toString('hex'); // 16 caracteres hexadecimales
             }
@@ -30,18 +29,19 @@ export const register = async(req: Request,res: Response): Promise<void>=>{
                 data: {
                     email,
                     password: hashedPassword,
-                    id_operador,
                     nombre,
                     apellidos,
                     ci,
                     celular,
-                    rol,
-                    estado
+                    rol_id,
+                    operador_id,
+                    estado,
+                    created_at: new Date()
 
                 }
             }
         )
-
+        
         const token = generateToken(user)
         res.status(201).json({ token })
 
@@ -58,7 +58,84 @@ export const register = async(req: Request,res: Response): Promise<void>=>{
 
 }
 
+
 export const login = async (req: Request, res: Response): Promise<void> => {
+    const { email, password } = req.body;
+
+    try {
+        // Validaciones de entrada
+        if (!email) {
+            res.status(400).json({ message: 'El email es obligatorio' });
+            return;
+        }
+        if (!password) {
+            res.status(400).json({ message: 'El password es obligatorio' });
+            return;
+        }
+
+        // Buscar el usuario en la base de datos
+        
+        const user = await prisma.findUnique({
+            where: { email },
+            include: {
+                rol: {
+                    include: {
+                        rolPermissions: {
+                            include: {
+                                permission: true, // Incluir los permisos asociados al rol
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Si no se encuentra el usuario
+        if (!user) {
+            res.status(404).json({ error: 'Usuario no encontrado' });
+            return;
+        }
+
+        // Si la contraseña del usuario es null
+        if (user.password === null) {
+            res.status(401).json({ error: 'Contraseña del usuario no está definida' });
+            return;
+        }
+
+        // Comparar las contraseñas
+        const passwordMatch = await comparePasswords(password, user.password);
+        if (!passwordMatch) {
+            res.status(401).json({ error: 'Usuario y contraseñas no coinciden' });
+            return;
+        }
+
+        // Generar token (asumiendo que tienes una función para esto)
+        const token = generateToken(user);
+
+        // Obtener la estructura de permisos del rol del usuario
+        const permissions = user.rol.rolPermissions.map((rolPermission) => ({
+            id: rolPermission.permission.id,
+            name: rolPermission.permission.name,
+        }));
+
+        // Crear la respuesta de usuario
+        const data = {
+            id:user.id, 
+            operador_id: user.operador_id,
+            nombre_completo: user.nombre+' '+user.apellidos,
+            token : generateToken(user),          
+            permissions: permissions,
+        };
+        // Enviar respuesta con los datos y el token
+        res.status(200).json({ data });
+
+    } catch (error: any) {
+        console.log('Error: ', error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+// login con un solo 
+/*export const login = async (req: Request, res: Response): Promise<void> => {
 
     const { email, password } = req.body
 
@@ -86,9 +163,22 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         if (!passwordMatch) {
             res.status(401).json({ error: 'Usuario y contraseñas no coinciden' })
         }
+        //const token = generateToken(user);
+        const data = {
+            id:user.id, 
+            operador_id: user.operador_id,
+            nombre_completo: user.nombre+' '+user.apellidos,
+            token : generateToken(user),          
+            permissions:
+        };
 
-        const token = generateToken(user)
-        res.status(200).json({ token })
+        res.status(200).json({
+            //token,
+            data
+        });
+
+        //const token = generateToken(user)
+        //res.status(200).json({ token } )
 
 
     } catch (error: any) {
@@ -96,6 +186,60 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
 }
+export const checkEmail = async (req: Request, res: Response): Promise<void> => {
+    const { email } = req.body;
+
+    try {
+        // Verificar si el email fue proporcionado
+        if (!email) {
+            res.status(400).json({ message: 'El email es obligatorio' });
+            return;
+        }
+
+        // Buscar si el email ya está registrado en la base de datos
+        const user = await prisma.findUnique({
+            where: { email },
+        });
+
+        // Si el usuario con ese email ya existe, retornar un mensaje de error
+        if (user) {
+            res.status(400).json({ message: 'El mail ingresado ya existe' });
+        } else {
+            // Si el email no existe, retornar un mensaje de éxito
+            res.status(200).json({ message: 'El email está disponible' });
+        }
+    } catch (error: any) {
+        // Manejo de errores
+        console.error(error);
+        res.status(500).json({ error: 'Hubo un error al verificar el email' });
+    }
+};    */
        
-       
-   
+export const checkEmail = async (req: Request, res: Response): Promise<void> => {
+    const { email } = req.body;
+
+    try {
+        // Verificar si el email fue proporcionado
+        if (!email) {
+            res.status(400).json(false);  // Devuelve 'false' si no se proporciona el email
+            return;
+        }
+
+        // Buscar si el email ya está registrado en la base de datos
+        const user = await prisma.findUnique({  // Asegúrate de que el modelo se llama 'user' en tu prisma.schema
+            where: { email },
+        });
+
+        // Si el usuario con ese email ya existe, retornar false
+        if (user) {
+            res.status(200).json(true);  // Devuelve 'false' si el email ya está registrado
+        } else {
+            // Si el email no existe, retornar true
+            res.status(200).json(false);  // Devuelve 'true' si el email está disponible
+        }
+    } catch (error: any) {
+        // Manejo de errores
+        console.error(error);
+        res.status(500).json(false);  // Devuelve 'false' si ocurre un error
+    }
+};

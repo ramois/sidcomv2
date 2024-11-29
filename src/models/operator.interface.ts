@@ -1,4 +1,78 @@
-export interface Operator{
+export interface Operator {
+    id: number;
+    razon_social: string;
+    act_ben_concentracion: number | null;
+    act_comer_externa: number | null;
+    act_comer_interna: number | null;
+    act_exploracion: number | null;
+    act_explotacion: number | null;
+    act_fundicion: number | null;
+    act_tostacion: number | null;
+    act_calcinacion: number | null;
+    act_industrializacion: number | null;
+    act_refinacion: number | null;
+    act_tras_colas: number | null;
+    denominacion_area: string | null;
+    dl_departamento: number | null;
+    dl_direccion: string | null;
+    dl_municipio: number | null;
+    dl_ubicacion: string | null;
+    doc_creacion: string | null;
+    fecha_exp_nim: Date | null;
+    fecha_exp_seprec: Date | null;
+    municipio_origen: string | null;
+    nro_codigo_unico: string | null;
+    nro_cuadricula: string | null;
+    nro_matricula_seprec: string | null;
+    nro_nim: string | null;
+    nro_personeria: string | null;
+    nro_res_ministerial: number | null;
+    nro_ruex: string | null;
+    correo_inst: string | null;
+    ofi_lat: string | null;
+    ofi_lon: string | null;
+    fax_op_min: string | null;
+    tel_fijo: string | null;
+    celular: number | null;
+    otro_celular: number | null;
+    tipo_doc_creacion: number | null;
+    tipo_explotacion: number | null;
+    tipo_operador: number | null;
+    verif_cert_liberacion: number | null;
+    nit: number | null;
+    nim_niar: number | null;
+    fecha_creacion: Date | null;
+    fecha_actualizacion: Date | null;
+    fecha_expiracion: Date | null;
+    estado: string | null;
+    verificacion_toma_muestra: number | null;
+    comercio_interno_coperativa: number | null;
+    traslado_colas: number | null;
+    transbordo: number | null;
+    nit_link: string | null;
+    nim_link: string | null;
+    seprec_link: string | null;
+    doc_explotacion_link: string | null;
+    ruex_link: string | null;
+    resolucion_min_fundind_link: string | null;
+    personeria_juridica_link: string | null;
+    doc_creacion_estatal_link: string | null;
+    ci_link: string | null;
+    rep_nombre_completo: string | null;
+    rep_ci: string | null;
+    rep_departamento_id: number | null;
+    rep_municipio_id: number | null;
+    rep_direccion: string | null;
+    rep_telefono: number | null;
+    rep_celular: number | null;
+    rep_correo: string | null;
+    observaciones: string | null;
+    created_at: Date;
+    updated_at: Date;
+    hash: string;
+  }
+  
+/*export interface Operator{
     id: number;
     razon_social:string;
     nit: number;
@@ -44,4 +118,4 @@ export interface Operator{
     ci_resp_tmuestra: String | null;
     celular_resp_tmuestra: number | null;
     correo_resp_tmuestra: String | null;
-} 
+}*/

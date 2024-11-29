@@ -1,7 +1,8 @@
+import { Decimal } from '@prisma/client/runtime/library';
 export interface FormIntMineral{
   id: number;
   formIntId: number;     // Identificador de la muestra
   mineralId: number;    // Identificador del mineral
-  ley?: number;          // Ley del mineral (generalmente un valor decimal)
+  ley?: Decimal;          // Ley del mineral (generalmente un valor decimal)
   unidad?: string;       // Unidad de medida
 }
