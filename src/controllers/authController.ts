@@ -100,10 +100,9 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         if (!passwordMatch) {
             return res.status(401).json({ error: 'Usuario y contraseñas no coinciden' });
         }
-
         // Si el rol es "Amsix", solo devolver el token
         if (user.rol.nombre === 'Siac-rm') {
-            const tokensiac = generateToken1();
+            const tokensiac = generateToken1(user);
             return res.status(200).json({ tokensiac });
         }
          // Obtener la estructura de permisos del rol del usuario
