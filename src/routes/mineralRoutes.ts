@@ -1,4 +1,16 @@
-import express, { NextFunction, Request, Response } from 'express'
+import express from 'express';
+import { createMineral, deleteMineral, getAllMineral, getMineralById, updateMineral } from '../controllers/mineralController'
+import { authenticateToken } from '../middlewares/authMiddleware';
+import { authorizePermission } from '../middlewares/permissionMiddleware';
+
+const router = express.Router();
+router.post('/', authenticateToken,authorizePermission('create_mineral'), createMineral)
+router.get('/', authenticateToken,authorizePermission('view_mineral'), getAllMineral)
+router.get('/:id', authenticateToken,authorizePermission('view_mineral_id'), getMineralById)
+router.put('/:id', authenticateToken,authorizePermission('update_mineral'), updateMineral)
+router.delete('/:id', authenticateToken,authorizePermission('delete_mineral'),deleteMineral)
+export default router;
+/*import express, { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { createMineral, deleteMineral, getAllMineral, getMineralById, updateMineral } from '../controllers/mineralController'
 
@@ -25,15 +37,9 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     })
 
 }
-/*router.post('/', authenticateToken, ()=>{return console.log('post')})
-router.get('/', authenticateToken,  ()=>{return console.log('getAll')})
-router.get('/:id', authenticateToken,  ()=>{return console.log('getByid')})
-router.put('/:id', authenticateToken,  ()=>{return console.log('post')})
-router.delete('/:id', authenticateToken, ()=>{return console.log('post')})*/
 router.post('/', authenticateToken, createMineral)
 router.get('/', authenticateToken, getAllMineral)
 router.get('/:id', authenticateToken, getMineralById)
 router.put('/:id', authenticateToken, updateMineral)
 router.delete('/:id', authenticateToken,deleteMineral)
-
-export default router;
+export default router;*/

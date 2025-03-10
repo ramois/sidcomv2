@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import prisma from '../models/departamento'
+import { prisma } from "../models/prismaClient"; // 
 
 export const createDepartamento = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -8,7 +8,7 @@ export const createDepartamento = async (req: Request, res: Response): Promise<v
             res.status(400).json({ message: 'El nombre del Departamento es obligatorio' })
             return
         }
-        const departamento = await prisma.create(
+        const departamento = await prisma.departamento.create(
             {
                 data: {
                     nombre,
@@ -26,7 +26,7 @@ export const createDepartamento = async (req: Request, res: Response): Promise<v
 
 export const getAllDepartamento = async (req: Request, res: Response): Promise<void> => {
     try {
-        const departamento = await prisma.findMany()
+        const departamento = await prisma.departamento.findMany()
         res.status(200).json(departamento);
     } catch (error: any) {
         console.log(error)
@@ -37,7 +37,7 @@ export const getAllDepartamento = async (req: Request, res: Response): Promise<v
 export const getDepartamentoById = async (req: Request, res: Response): Promise<void> => {
     const departamentoId = parseInt(req.params.id)
     try {
-        const departamento = await prisma.findUnique({
+        const departamento = await prisma.departamento.findUnique({
             where: {
                 id: departamentoId
             }
@@ -67,9 +67,9 @@ export const updateDepartamento = async (req: Request, res: Response): Promise<v
             dataToUpdate.latitud = latitud
         }
         if (longitud) {
-            dataToUpdate.delongitud =longitud
+            dataToUpdate.longitud =longitud
         }
-        const departamento = await prisma.update({
+        const departamento = await prisma.departamento.update({
             where: {
                 id: departamentoId
             },
@@ -90,7 +90,7 @@ export const updateDepartamento = async (req: Request, res: Response): Promise<v
 export const deleteDepartamento = async (req: Request, res: Response): Promise<void> => {
     const departamentoId = parseInt(req.params.id)
     try {
-        await prisma.delete({
+        await prisma.departamento.delete({
             where: {
                 id: departamentoId
             }

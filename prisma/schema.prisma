@@ -1,6 +1,5 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
@@ -29,6 +28,9 @@ model User {
   rol         Rol         @relation(fields: [rol_id], references: [id]) // Relación con el modelo 'Rol'
   operador    Operator?   @relation(fields: [operador_id], references: [id]) // Relación con el modelo 'Operator'
   formInt FormInt[] // Un Usuario puede tener muchos FormInt
+  sample Sample[] // Un Usuario puede tener muchas Tomas de muestras
+  formExt FormExt[] // Un Usuario puede tener muchas FormExt
+  samplesAsGador        Sample[]     @relation("ResponsableGador")
   @@map("users") // Mapear el modelo a la tabla "users" si el nombre de la tabla no coincide
 }
 enum Estado {
@@ -63,7 +65,6 @@ model RolPermission {
   @@id([permission_id, role_id]) // Clave primaria compuesta por los dos campos
   @@map("rol_permissions") // Mapear a la tabla 'rol_permissions' en la base de datos
 }
-
 model Operator {
   id                     Int       @id @default(autoincrement())
   razon_social           String    @unique
@@ -78,22 +79,18 @@ model Operator {
   act_industrializacion  Int?      @default(0)
   act_refinacion         Int?      @default(0)
   act_tras_colas         Int?      @default(0)
-  denominacion_area      String?
-  dl_departamento        Int?
+  dl_departamento_id     Int?
   dl_direccion           String?
-  dl_municipio           Int?
-  dl_ubicacion           String?
+  dl_municipio_id        Int?
   doc_creacion           String?
   fecha_exp_nim          DateTime?
   fecha_exp_seprec       DateTime?
-  municipio_origen       String?
-  nro_codigo_unico       String?
-  nro_cuadricula         String?
   nro_matricula_seprec   String?
   nro_nim                String?
   nro_personeria         String?
   nro_res_ministerial    Int?
   nro_ruex               String?
+  fecha_exp_ruex         DateTime?
   correo_inst            String?
   ofi_lat                String?
   ofi_lon                String?
@@ -102,19 +99,18 @@ model Operator {
   celular                Int?
   otro_celular           Int?
   tipo_doc_creacion      Int?
-  tipo_explotacion       Int?
   tipo_operador          Int?
-  verif_cert_liberacion  Int?
+  verif_cert_liberacion  Boolean? @default(false)
   nit                    Int?
-  nim_niar               Int?
+  tipo_nim_niar          String?
   fecha_creacion         DateTime?
   fecha_actualizacion    DateTime?
   fecha_expiracion       DateTime?
   estado      Estado     @default(ACTIVO) // Usamos un enum para estado
-  verificacion_toma_muestra Int?
-  comercio_interno_coperativa Int?
-  traslado_colas         Int?
-  transbordo             Int?
+  verificacion_toma_muestra Boolean? @default(false)
+  comercio_interno_coperativa Boolean? @default(false)
+  traslado_colas         Boolean? @default(false)
+  transbordo             Boolean? @default(false)
   nit_link               String?
   nim_link               String?
   seprec_link            String?
@@ -129,49 +125,102 @@ model Operator {
   rep_departamento_id    Int?
   rep_municipio_id       Int?
   rep_direccion          String?
-  rep_telefono           Int?
+  rep_telefono           String?
   rep_celular            Int?
   rep_correo             String?
   observaciones          String?
   created_at             DateTime
   updated_at             DateTime
-  hash          String @unique 
+  hash                   String @unique 
   // Relaciones
   samples Sample[] // Una entidad Operator puede tener muchos Sample
   formInt FormInt[] // Una entidad Operator puede tener muchos FormInt
+  formExt FormExt[] // Una entidad Operator puede tener muchos FormExt
   usuarios    User[]  
-}
+  responsableTM   ResponsableTM[]
+    // Relaciones con Municipio
+  dl_municipio           Municipios?     @relation("DlMunicipioOperator", fields: [dl_municipio_id], references: [id])
+  rep_municipio          Municipios?     @relation("RepMunicipioOperator", fields: [rep_municipio_id], references: [id])
 
+  // Relación con Arrendamiento y Oficina
+  arrendamientos         Arrendamiento[] @relation("OperatorArrendamiento")
+  oficinas               OficinaOperator[]       @relation("OperatorOficina")
+}
+model Arrendamiento{
+  id                 Int             @id @default(autoincrement())
+  operador_id        Int
+  codigo_unico       Int?
+  nro_cuadricula     Int?
+  denominacion_area  String?
+  departamento_id    Int?
+  municipio_id       Int
+  tipo_explotacion   String? 
+  operador           Operator     @relation("OperatorArrendamiento", fields: [operador_id], references: [id], onDelete: Cascade)
+  municipio          Municipios   @relation("ArrendamientoMunicipio", fields: [municipio_id], references: [id])          
+}
+model OficinaOperator{
+  id                 Int             @id @default(autoincrement())
+  operador_id        Int
+  departamento_id    Int?
+  municipio_id       Int
+  tipo               String?
+  direccion          String?
+  latitud            String?
+  longitud           String?
+  operador           Operator     @relation("OperatorOficina", fields: [operador_id], references: [id], onDelete: Cascade)
+  municipio          Municipios   @relation("OficinaMunicipio", fields: [municipio_id], references: [id])
+}
 model Sample {
   id                 Int             @id @default(autoincrement())
-  fecha_emision      DateTime        @default(now())
-  ubi_geografica     String
+  user_id            Int
+  operador_id        Int
+  responsable_tdm_id Int
+  responsable_tdm_senarecom_id  Int?
+  responsable_tdm_gador_id Int?
+  nro_formulario     String          @unique
   lugar_verificacion String
-  id_operador        Int
-  responsable        String
-  lotes              String
-  tipo_muestra       Int
-  presentacion       Int
-  sacos              Int
-  camiones           Int
-  peso_neto          Decimal
-  peso_parcial       Decimal
-  id_municipio       Int
-  senerecom          String
-  tipo_agranel       Int?            @default(0)
-  tipo_emsacado      Int?            @default(0)
-  tipo_lingotes      Int?            @default(0)
-  tipo_sal           Int?            @default(0)
-  tipo_otr           Int?            @default(0)
+  ubicacion_lat      String
+  ubicacion_lon      String
+  departamento_id    Int?
+  municipio_id       Int
+  lote               String
+  tipo_muestra       String
+  presentacion_id    Int
+  cantidad           Int?
+  nro_camiones       Int?
+  total_parcial      Decimal?
+  peso_neto_total    Decimal
+  peso_neto_parcial  Decimal?
   observaciones      String?
-  estado             Int
-  operador           Operator        @relation(fields: [id_operador], references: [id])
+  fecha_hora_tdm     DateTime
+  created_at         DateTime
+  updated_at         DateTime
+  fecha_aprobacion   DateTime?
+  fecha_firma        DateTime?
+  justificacion_anulacion String?
+  humedad            Decimal?
+  foto_link          String?
+  hash               String @unique 
+  estado             EstadoSample     @default(GENERADO) // Usamos un enum para estado
+  operador           Operator         @relation(fields: [operador_id], references: [id])
+  user               User         @relation(fields: [user_id], references: [id])
+  responsabletm      ResponsableTM         @relation(fields: [responsable_tdm_id], references: [id])
+  senarecomtm        SenarecomTM?         @relation(fields: [responsable_tdm_senarecom_id], references: [id])
+  responsable_gador  User?                   @relation("ResponsableGador", fields: [responsable_tdm_gador_id], references: [id])
+  presentacion       Presentacion     @relation(fields: [presentacion_id], references: [id]) 
   minerales          SampleMineral[]
-  // Definir relación uno a uno con FormExt
-  formExt            FormExt?        @relation("SampleFormExt")
-  formExtId          Int?            @unique
+  municipio_origen   SampleMunicipio[]
+  procedimiento      SampleProcedimientoMuestra[]
+  municipio                Municipios         @relation(fields: [municipio_id], references: [id]) // Relación con Municipio
+  formExts              FormExt[]            @relation("SampleFormExt") // Aquí especificamos la relación explícita
 }
-
+enum EstadoSample {
+  GENERADO
+  SOLICITADO
+  APROBADO
+  FIRMADO
+  ANULADO
+}
 model Mineral {
   id          Int              @id @default(autoincrement())
   nombre      String
@@ -181,46 +230,81 @@ model Mineral {
   estado      Estado     @default(ACTIVO) // Usamos un enum para estado
   sample      SampleMineral[]
   formInt     FormIntMineral[]
+  formExt     FormExtMineral[]
 }
 
 model SampleMineral {
-  id        Int     @id @default(autoincrement())
   sampleId  Int
   mineralId Int
-  ley       Int
-  unidad    String
+  ley       Decimal?
+  unidad    String?
   sample    Sample  @relation(fields: [sampleId], references: [id])
   mineral   Mineral @relation(fields: [mineralId], references: [id])
-
-  //@@id([sampleId, mineralId])
+  @@id([sampleId, mineralId])
 }
-
+model SampleMunicipio {
+  sampleId Int
+  municipioId Int
+  sample   Sample @relation(fields: [sampleId], references: [id])
+  municipios   Municipios @relation(fields: [municipioId], references: [id])
+  @@id([sampleId, municipioId])
+}
 model FormExt {
-  id                      Int     @id @default(autoincrement())
-  id_sample               Int     @unique
-  m03                     String
-  nro_factura_exportacion Int
-  laboratorio             String
-  cod_analisis            Int
-  des_comprador           String
-  des_aduana              String
-  des_pais                String
-  tipo_transporte         String
-  placa                   String
-  nom_conductor           String
-  licencia                String
-  observaciones           String?
-  // Definir relación uno a uno con Sample
-  sample                  Sample  @relation("SampleFormExt", fields: [id_sample], references: [id])
+  id                   Int              @id @default(autoincrement())
+  user_id              Int 
+  operador_id          Int
+  nro_formulario       String           @unique
+  m03_id               String
+  nro_factura_exportacion  String
+  laboratorio          String
+  codigo_analisis      String
+  nro_formulario_tm    String
+  lote                 String
+  presentacion_id      Int
+  cantidad             Int?
+  peso_bruto_humedo    Decimal
+  peso_neto            Decimal
+  tara                 Int?
+  humedad              Int?
+  merma                Int?
+  municipio_origen     FormExtMunicipio[]
+  minerales            FormExtMineral[]
+  comprador            String
+  aduana_id            Int
+  pais_destino_id      Int
+  tipo_transporte      String
+  placa                String?
+  nom_conductor        String?
+  licencia             String?
+  observaciones        String?
+  fecha_creacion       DateTime?
+  fecha_vencimiento    DateTime?
+  justificacion_anulacion String?
+  nro_vagon            String?
+  empresa_ferrea       String?
+  fecha_ferrea         String?
+  hr_ferrea            String?
+  tara_volqueta        String?
+  created_at           DateTime
+  updated_at           DateTime
+  hash                 String @unique 
+  estado               EstadoForm     @default(GENERADO) // Usamos un enum para estado
+  operador             Operator         @relation(fields: [operador_id], references: [id])
+  user                 User         @relation(fields: [user_id], references: [id])
+  pais                 Pais         @relation(fields: [pais_destino_id], references: [id])
+  aduana               Aduana         @relation(fields: [aduana_id], references: [id])
+  presentacion         Presentacion     @relation(fields: [presentacion_id], references: [id]) 
+  // Definir relación muchos a uno con Sample
+  sample               Sample?  @relation("SampleFormExt", fields: [id_sample], references: [id])
+  id_sample            Int?    // Asegúrate de que id_sample sea opcional
 }
-
 model FormInt {
   id                   Int              @id @default(autoincrement())
   user_id              Int 
   operador_id          Int
-  nro_formulario       String
+  nro_formulario       String           @unique
   lote                 String
-  presentacion         Int
+  presentacion_id      Int
   cantidad             Int?
   peso_bruto_humedo    Decimal
   peso_neto            Decimal
@@ -234,9 +318,9 @@ model FormInt {
   des_planta           String?
   id_municipio_destino Int
   tipo_transporte      String
-  placa                String
-  nom_conductor        String
-  licencia             String
+  placa                String?
+  nom_conductor        String?
+  licencia             String?
   observaciones        String?
   fecha_creacion       DateTime?
   fecha_vencimiento    DateTime?
@@ -250,9 +334,12 @@ model FormInt {
   nro_viajes           Int?
   created_at           DateTime
   updated_at           DateTime
+  hash          String @unique 
   estado      EstadoForm     @default(GENERADO) // Usamos un enum para estado
-  operador             Operator?         @relation(fields: [operador_id], references: [id])
+  operador             Operator         @relation(fields: [operador_id], references: [id])
   user                 User         @relation(fields: [user_id], references: [id])
+  presentacion         Presentacion     @relation(fields: [presentacion_id], references: [id]) 
+  municipio            Municipios         @relation(fields: [id_municipio_destino], references: [id])
 }
 enum EstadoForm {
   GENERADO
@@ -261,22 +348,36 @@ enum EstadoForm {
   ANULADO
 }
 model FormIntMineral {
-  id        Int     @id @default(autoincrement())
   formIntId Int
   mineralId Int
   ley       Decimal?
   unidad    String?
   formInt   FormInt @relation(fields: [formIntId], references: [id])
   mineral   Mineral @relation(fields: [mineralId], references: [id])
-  //@@id([formIntId, mineralId])
+  @@id([formIntId, mineralId])
 }
 model FormIntMunicipio {
-  id        Int     @id @default(autoincrement())
   formIntId Int
   municipioId Int
   formInt   FormInt @relation(fields: [formIntId], references: [id])
   municipios   Municipios @relation(fields: [municipioId], references: [id])
-  //@@id([formIntId, mineralId])
+  @@id([formIntId, municipioId])
+}
+model FormExtMineral {
+  formExtId Int
+  mineralId Int
+  ley       Decimal?
+  unidad    String?
+  formExt   FormExt @relation(fields: [formExtId], references: [id])
+  mineral   Mineral @relation(fields: [mineralId], references: [id])
+  @@id([formExtId, mineralId])
+}
+model FormExtMunicipio {
+  formExtId Int
+  municipioId Int
+  formExt   FormExt @relation(fields: [formExtId], references: [id])
+  municipios   Municipios @relation(fields: [municipioId], references: [id])
+  @@id([formExtId, municipioId])
 }
 model Municipios {
   id                Int       @id @default(autoincrement())
@@ -286,9 +387,16 @@ model Municipios {
   codigo            String
     
   formInt     FormIntMunicipio[]
+  sample      SampleMunicipio[]
+  formExt     FormExtMunicipio[]
+  samples     Sample[]
+  formInts    FormInt[]        
   departamento      Departamento @relation(fields: [departamento_id], references: [id])
+  dl_operators      Operator[]           @relation("DlMunicipioOperator")
+  rep_operators     Operator[]           @relation("RepMunicipioOperator")
+  arrendamientos    Arrendamiento[]      @relation("ArrendamientoMunicipio")
+  oficinas          OficinaOperator[]            @relation("OficinaMunicipio")
 }
-
 model Departamento {
   id                Int         @id @default(autoincrement())
   nombre            String
@@ -297,16 +405,79 @@ model Departamento {
   // Relación inversa con Municipios
   municipios        Municipios[]
 }
+model Pais {
+  id                Int         @id @default(autoincrement())
+  nombre            String
+  sigla             String
+  continente        String
+  formExt           FormExt[]
+}
+model Aduana {
+  id                Int         @id @default(autoincrement())
+  nombre            String
+  codigo_aduana     String
+  latitud           Decimal    
+  longitud          Decimal
+  estado            Estado     @default(ACTIVO) // Usamos un enum para estado
+  formExt           FormExt[]
+}
 model Presentacion{
   id                Int         @id @default(autoincrement())
   nombre            String
   humedad           Int
   merma             Int
   cantidad          Int
+  samples           Sample[]
+  formExt           FormExt[]
+  formInt           FormInt[]
 }
 model DuracionForm{
   id                    Int         @id @default(autoincrement())
   nombre                String
   dias                  Int
   fecha_actualizacion   DateTime
+}
+model ProcedimientoMuestra{
+  id                Int         @id @default(autoincrement())
+  nombre            String
+  procedimiento     String
+  sample      SampleProcedimientoMuestra[]
+}
+model SampleProcedimientoMuestra {
+  sampleId Int
+  procedimientoId Int
+  sample   Sample @relation(fields: [sampleId], references: [id])
+  procedimientomuestra   ProcedimientoMuestra @relation(fields: [procedimientoId], references: [id])
+  @@id([sampleId, procedimientoId])
+}
+model ResponsableTM {
+  id          Int     @id @default(autoincrement())
+  nombre      String
+  apellidos   String
+  ci          String?
+  celular     Int?
+  email       String?
+  operador_id Int    
+  estado      Estado     @default(ACTIVO) // Usamos un enum para estado
+  created_at   DateTime   @default(now())  // CamTABLé a camelCase y agregué el valor predeterminado
+  updated_at   DateTime   @updatedAt       // Cambié a camelCase y asigné el valor `@updatedAt` para actualizar automáticamente
+
+  // Relación
+  operador    Operator   @relation(fields: [operador_id], references: [id]) // Relación con el modelo 'Operator'
+  sample Sample[] // Un responsable puede tener muchas Tomas de muestras
+}
+
+model SenarecomTM {
+  id          Int     @id @default(autoincrement())
+  nombre      String
+  apellidos   String
+  ci          String?
+  celular     Int?
+  email       String?
+  cargo       String?    
+  estado      Estado     @default(ACTIVO) // Usamos un enum para estado
+  created_at   DateTime   @default(now())  // CamTABLé a camelCase y agregué el valor predeterminado
+  updated_at   DateTime   @updatedAt       // Cambié a camelCase y asigné el valor `@updatedAt` para actualizar automáticamente
+  // Relación
+  sample Sample[] // Un responsable senarecom puede tener muchas Tomas de muestras
 }

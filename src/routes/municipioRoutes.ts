@@ -1,4 +1,17 @@
-import express, { NextFunction, Request, Response } from 'express'
+import express from 'express';
+import { createMunicipio, deleteMunicipio, getAllMunicipios, getMunicipioById, updateMunicipio } from '../controllers/municipioController'
+import { authenticateToken } from '../middlewares/authMiddleware';
+import { authorizePermission } from '../middlewares/permissionMiddleware';
+
+const router = express.Router();
+router.post('/', authenticateToken,authorizePermission('create_municipality'), createMunicipio)
+router.get('/', authenticateToken,authorizePermission('view_municipality'), getAllMunicipios)
+router.get('/:id', authenticateToken,authorizePermission('view_municipality_id'), getMunicipioById)
+router.put('/:id', authenticateToken,authorizePermission('update_municipality'), updateMunicipio)
+router.delete('/:id', authenticateToken,authorizePermission('delete_municipality'),deleteMunicipio)
+
+export default router;
+/*import express, { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { createMunicipio, deleteMunicipio, getAllMunicipios, getMunicipioById, updateMunicipio } from '../controllers/municipioController'
 
@@ -25,15 +38,10 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     })
 
 }
-/*router.post('/', authenticateToken, ()=>{return console.log('post')})
-router.get('/', authenticateToken,  ()=>{return console.log('getAll')})
-router.get('/:id', authenticateToken,  ()=>{return console.log('getByid')})
-router.put('/:id', authenticateToken,  ()=>{return console.log('post')})
-router.delete('/:id', authenticateToken, ()=>{return console.log('post')})*/
 router.post('/', authenticateToken, createMunicipio)
 router.get('/', authenticateToken, getAllMunicipios)
 router.get('/:id', authenticateToken, getMunicipioById)
 router.put('/:id', authenticateToken, updateMunicipio)
 router.delete('/:id', authenticateToken,deleteMunicipio)
 
-export default router;
+export default router;*/

@@ -1,3 +1,2 @@
-import { PrismaClient } from "@prisma/client";   
-const prisma=new PrismaClient();
-export default prisma.departamento;
+import { prisma } from "./prismaClient"; 
+export const aduana = prisma.departamento; 

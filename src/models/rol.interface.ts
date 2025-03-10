@@ -4,5 +4,5 @@ export interface Rol {
   nombre: string;
   created_at: string;
   updated_at: string;
-  rolPermissions: RolPermission[];
+  permisos: RolPermission[];
 }

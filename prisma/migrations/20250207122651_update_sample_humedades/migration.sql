@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Sample" ALTER COLUMN "humedad" SET DATA TYPE DECIMAL(65,30);

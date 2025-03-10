@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "FormInt" ALTER COLUMN "placa" DROP NOT NULL,
+ALTER COLUMN "nom_conductor" DROP NOT NULL,
+ALTER COLUMN "licencia" DROP NOT NULL;

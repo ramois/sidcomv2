@@ -1,4 +1,18 @@
-import express, { NextFunction, Request, Response } from 'express'
+import express from 'express';
+import { createRol, deleteRol, getAllRol, getRolById, updateRol } from '../controllers/rolController'
+import { authenticateToken } from '../middlewares/authMiddleware';
+import { authorizePermission } from '../middlewares/permissionMiddleware';
+
+const router = express.Router();
+router.post('/', authenticateToken,authorizePermission('create_role'), createRol)
+router.get('/', authenticateToken,authorizePermission('view_role'), getAllRol)
+router.get('/:id', authenticateToken,authorizePermission('view_role_id'), getRolById)
+router.put('/:id', authenticateToken,authorizePermission('update_role'), updateRol)
+router.delete('/:id', authenticateToken,authorizePermission('delete_role'),deleteRol)
+
+export default router;
+
+/*import express, { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { createRol, deleteRol, getAllRol, getRolById, updateRol } from '../controllers/rolController'
 
@@ -25,15 +39,11 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     })
 
 }
-/*router.post('/', authenticateToken, ()=>{return console.log('post')})
-router.get('/', authenticateToken,  ()=>{return console.log('getAll')})
-router.get('/:id', authenticateToken,  ()=>{return console.log('getByid')})
-router.put('/:id', authenticateToken,  ()=>{return console.log('post')})
-router.delete('/:id', authenticateToken, ()=>{return console.log('post')})*/
+
 router.post('/', authenticateToken, createRol)
 router.get('/', authenticateToken, getAllRol)
 router.get('/:id', authenticateToken, getRolById)
 router.put('/:id', authenticateToken, updateRol)
 router.delete('/:id', authenticateToken,deleteRol)
 
-export default router;
+export default router;*/

@@ -1,3 +1,4 @@
+import { Municipio } from './municipio.interface';
 export interface Operator {
     id: number;
     razon_social: string;
@@ -13,21 +14,18 @@ export interface Operator {
     act_refinacion: number | null;
     act_tras_colas: number | null;
     denominacion_area: string | null;
-    dl_departamento: number | null;
+    dl_departamento_id: number | null;
     dl_direccion: string | null;
-    dl_municipio: number | null;
-    dl_ubicacion: string | null;
+    dl_municipio_id: number | null;
     doc_creacion: string | null;
     fecha_exp_nim: Date | null;
     fecha_exp_seprec: Date | null;
-    municipio_origen: string | null;
-    nro_codigo_unico: string | null;
-    nro_cuadricula: string | null;
     nro_matricula_seprec: string | null;
     nro_nim: string | null;
     nro_personeria: string | null;
     nro_res_ministerial: number | null;
     nro_ruex: string | null;
+    fecha_exp_ruex: Date | null;
     correo_inst: string | null;
     ofi_lat: string | null;
     ofi_lon: string | null;
@@ -36,19 +34,18 @@ export interface Operator {
     celular: number | null;
     otro_celular: number | null;
     tipo_doc_creacion: number | null;
-    tipo_explotacion: number | null;
     tipo_operador: number | null;
-    verif_cert_liberacion: number | null;
+    verif_cert_liberacion: boolean | null;
     nit: number | null;
-    nim_niar: number | null;
+    tipo_nim_niar: string | null;
     fecha_creacion: Date | null;
     fecha_actualizacion: Date | null;
     fecha_expiracion: Date | null;
     estado: string | null;
-    verificacion_toma_muestra: number | null;
-    comercio_interno_coperativa: number | null;
-    traslado_colas: number | null;
-    transbordo: number | null;
+    verificacion_toma_muestra: boolean | null;
+    comercio_interno_coperativa: boolean | null;
+    traslado_colas: boolean | null;
+    transbordo: boolean | null;
     nit_link: string | null;
     nim_link: string | null;
     seprec_link: string | null;
@@ -63,13 +60,14 @@ export interface Operator {
     rep_departamento_id: number | null;
     rep_municipio_id: number | null;
     rep_direccion: string | null;
-    rep_telefono: number | null;
+    rep_telefono: string | null;
     rep_celular: number | null;
     rep_correo: string | null;
     observaciones: string | null;
     created_at: Date;
     updated_at: Date;
     hash: string;
+    municipio:Municipio;
   }
   
 /*export interface Operator{
