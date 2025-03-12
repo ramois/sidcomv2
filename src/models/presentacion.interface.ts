@@ -1,4 +1,4 @@
-export interface DuracionForm {
+export interface Presentacion {
   id: number;
   nombre: string;
   humedad: number;

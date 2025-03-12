@@ -1,3 +1,16 @@
+import express from 'express';
+import { createDepartamento, deleteDepartamento, getAllDepartamento, getDepartamentoById, updateDepartamento } from '../controllers/departamentoController'
+import { authenticateToken } from '../middlewares/authMiddleware';
+import { authorizePermission } from '../middlewares/permissionMiddleware';
+
+const router = express.Router();
+router.post('/', authenticateToken,authorizePermission('create_departament'), createDepartamento)
+router.get('/', authenticateToken,authorizePermission('view_departament'), getAllDepartamento)
+router.get('/:id', authenticateToken,authorizePermission('view_departament_id'), getDepartamentoById)
+router.put('/:id', authenticateToken,authorizePermission('update_departament'),updateDepartamento)
+router.delete('/:id', authenticateToken,authorizePermission('delete_departament'),deleteDepartamento)
+export default router;
+/*
 import express, { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { createDepartamento, deleteDepartamento, getAllDepartamento, getDepartamentoById, updateDepartamento } from '../controllers/departamentoController'
@@ -25,15 +38,10 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     })
 
 }
-/*router.post('/', authenticateToken, ()=>{return console.log('post')})
-router.get('/', authenticateToken,  ()=>{return console.log('getAll')})
-router.get('/:id', authenticateToken,  ()=>{return console.log('getByid')})
-router.put('/:id', authenticateToken,  ()=>{return console.log('post')})
-router.delete('/:id', authenticateToken, ()=>{return console.log('post')})*/
 router.post('/', authenticateToken, createDepartamento)
 router.get('/', authenticateToken, getAllDepartamento)
 router.get('/:id', authenticateToken, getDepartamentoById)
 router.put('/:id', authenticateToken, updateDepartamento)
 router.delete('/:id', authenticateToken,deleteDepartamento)
 
-export default router;
+export default router;*/

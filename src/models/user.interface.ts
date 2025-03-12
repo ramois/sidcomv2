@@ -1,4 +1,3 @@
-import { Rol } from './rol.interface';  
 export interface User {
   id: number;
   email: string;
@@ -12,7 +11,8 @@ export interface User {
   estado: string;
   created_at: Date;
   updated_at: Date;
-  //rol: Rol;
+  // Si en algún momento decides agregar el campo 'rol', puedes hacerlo aquí.
+  // rol: Rol;
 }
   /*
 import { Rol } from './rol.interface';           // Asegúrate de que la ruta sea correcta

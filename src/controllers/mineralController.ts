@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import prisma from '../models/mineral'
+import { prisma } from "../models/prismaClient"; 
 
 export const createMineral = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -16,7 +16,7 @@ export const createMineral = async (req: Request, res: Response): Promise<void> 
             res.status(400).json({ message: 'El descripcion de mineral es obligatorio' })
             return
         }
-        const mineral = await prisma.create(
+        const mineral = await prisma.mineral.create(
             {
                 data: {
                     nombre,
@@ -38,7 +38,7 @@ export const createMineral = async (req: Request, res: Response): Promise<void> 
 }
 export const getAllMineral = async (req: Request, res: Response): Promise<void> => {
         try {
-            const minerales = await prisma.findMany()
+            const minerales = await prisma.mineral.findMany()
             res.status(200).json(minerales);
         } catch (error: any) {
             console.log(error)
@@ -48,7 +48,7 @@ export const getAllMineral = async (req: Request, res: Response): Promise<void> 
 export const getMineralById = async (req: Request, res: Response): Promise<void> => {
     const mineralId = parseInt(req.params.id)
     try {
-        const mineral = await prisma.findUnique({
+        const mineral = await prisma.mineral.findUnique({
             where: {
                 id: mineralId
             }
@@ -78,12 +78,12 @@ export const updateMineral = async (req: Request, res: Response): Promise<void> 
             dataToUpdate.sigla = sigla
         }
         if (descripcion) {
-            dataToUpdate.dedescripcion =descripcion
+            dataToUpdate.descripcion =descripcion
         }
         if (tipo) {
             dataToUpdate.tipo = tipo
         }   
-        const mineral = await prisma.update({
+        const mineral = await prisma.mineral.update({
             where: {
                 id: mineralId
             },
@@ -106,7 +106,7 @@ export const updateMineral = async (req: Request, res: Response): Promise<void> 
 export const deleteMineral = async (req: Request, res: Response): Promise<void> => {
     const mineralId = parseInt(req.params.id)
     try {
-        await prisma.delete({
+        await prisma.mineral.delete({
             where: {
                 id: mineralId
             }

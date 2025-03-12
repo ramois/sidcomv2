@@ -1,7 +1,53 @@
-import { Decimal } from '@prisma/client/runtime/library';
+import { Operator } from './operator.interface';
+import { SenarecomTM } from './senarecomtm.interface';
+import { ResponsableTM } from './responsabletm.interface';
+import { Municipio } from './municipio.interface';
+import { User } from './user.interface';
 import { SampleMineral } from './samplemineral.interface';
+import { SampleMunicipio } from './samplemunicipio.interface';
+import { SampleProcedimientoMuestra} from './sampleprocedimientomuestra.interface';
+import { Decimal } from '@prisma/client/runtime/library';
+import { Presentacion } from './presentacion.interface';
 export interface Sample {
-  id: number;                        // Identificador único, auto-incremental
+  id: number;
+  user_id: number;
+  operador_id: number;
+  responsable_tdm_id?: number;
+  responsable_tdm_senarecom_id?: number;
+  responsable_tdm_gador_id?: User;
+  nro_formulario: string;
+  lugar_verificacion: string;
+  ubicacion_lat: string;
+  ubicacion_lon: string;
+  departamento_id?: number;
+  municipio_id: Municipio;
+  lote: string;
+  tipo_muestra: string;
+  cantidad?: number;
+  nro_camiones?: number;
+  total_parcial?: Decimal;
+  peso_neto_total: Decimal;
+  peso_neto_parcial?: Decimal;
+  observaciones?: string;
+  hash: string;
+  fecha_hora_tdm: Date;
+  created_at: Date;
+  updated_at: Date;
+  fecha_aprobacion?: Date;
+  fecha_firma?: Date;
+  justificacion_anulacion?: string;
+  humedad?: Decimal;
+  foto_link?: string;
+  operador: Operator;
+  user: User;
+  senarecomTM: SenarecomTM;
+  responsableTM: ResponsableTM;
+  presentacionTM: Presentacion;
+  minerales: SampleMineral[];
+  municipio_origen: SampleMunicipio[];
+  procedimiento: SampleProcedimientoMuestra[];
+}
+  /*id: number;                        // Identificador único, auto-incremental
   fecha_emision: Date;               // Fecha y hora de emisión
   ubi_geografica: string;            // Ubicación geográfica
   lugar_verificacion: string;        // Lugar de verificación
@@ -24,4 +70,6 @@ export interface Sample {
   observaciones?: string;           // Observaciones adicionales (opcional)
   estado: number;                   // Estado (generalmente un valor entero)
   minerales: SampleMineral[];       // Relación con minerales (múltiples registros posibles)
-}
+  municipio_origen: SampleMunicipio[];       // Relación con minerales (múltiples registros posibles)
+  procedimiento: SampleProcedimientoMuestra[];       // Relación con minerales (múltiples registros posibles)
+}*/

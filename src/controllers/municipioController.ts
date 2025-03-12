@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import prisma from '../models/municipio'
+import { prisma } from "../models/prismaClient"; 
 
 export const createMunicipio = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -16,7 +16,7 @@ export const createMunicipio = async (req: Request, res: Response): Promise<void
             res.status(400).json({ message: 'El codigo es obligatorio' })
             return
         }
-        const municipios = await prisma.create(
+        const municipios = await prisma.municipios.create(
             {
                 data: {
                     municipio,
@@ -42,7 +42,7 @@ export const getAllMunicipios = async (req: Request, res: Response): Promise<voi
         const departamentoId = req.query.departamento_id ? Number(req.query.departamento_id) : null;
 
         // Preparamos la consulta de Prisma
-        const municipios = await prisma.findMany({
+        const municipios = await prisma.municipios.findMany({
             where: departamentoId ? { departamento_id: departamentoId } : undefined, // Solo agregamos 'where' si 'departamento_id' está presente
         });
 
@@ -66,7 +66,7 @@ export const getAllMunicipios = async (req: Request, res: Response): Promise<voi
 export const getMunicipioById = async (req: Request, res: Response): Promise<void> => {
     const municipioId = parseInt(req.params.id)
     try {
-        const municipios = await prisma.findUnique({
+        const municipios = await prisma.municipios.findUnique({
             where: {
                 id: municipioId
             }
@@ -96,12 +96,12 @@ export const updateMunicipio = async (req: Request, res: Response): Promise<void
             dataToUpdate.provincia = provincia
         }
         if (departamento_id) {
-            dataToUpdate.dedepartamento_id =departamento_id
+            dataToUpdate.departamento_id =departamento_id
         }
         if (codigo) {
             dataToUpdate.codigo = codigo
         }   
-        const municipios = await prisma.update({
+        const municipios = await prisma.municipios.update({
             where: {
                 id: municipioId
             },
@@ -124,7 +124,7 @@ export const updateMunicipio = async (req: Request, res: Response): Promise<void
 export const deleteMunicipio = async (req: Request, res: Response): Promise<void> => {
     const municipioId = parseInt(req.params.id)
     try {
-        await prisma.delete({
+        await prisma.municipios.delete({
             where: {
                 id: municipioId
             }

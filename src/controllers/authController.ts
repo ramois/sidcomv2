@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 const crypto = require('crypto');
 import { comparePasswords, hashPassword } from "../services/password.services";
 import prisma from "../models/user";
-import { generateToken } from "../services/auth.services";
-
+import { generateToken, generateToken1 } from "../services/auth.services";
 export const register = async(req: Request,res: Response): Promise<void>=>{
     let {email, password,nombre,apellidos,ci,celular,rol_id,operador_id,estado}=req.body
     try {
@@ -58,23 +57,19 @@ export const register = async(req: Request,res: Response): Promise<void>=>{
 
 }
 
-
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login = async (req: Request, res: Response): Promise<Response> => {  // Cambié void por Response
     const { email, password } = req.body;
 
     try {
         // Validaciones de entrada
         if (!email) {
-            res.status(400).json({ message: 'El email es obligatorio' });
-            return;
+            return res.status(400).json({ message: 'El email es obligatorio' });
         }
         if (!password) {
-            res.status(400).json({ message: 'El password es obligatorio' });
-            return;
+            return res.status(400).json({ message: 'El password es obligatorio' });
         }
 
         // Buscar el usuario en la base de datos
-        
         const user = await prisma.findUnique({
             where: { email },
             include: {
@@ -92,46 +87,43 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
         // Si no se encuentra el usuario
         if (!user) {
-            res.status(404).json({ error: 'Usuario no encontrado' });
-            return;
+            return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
         // Si la contraseña del usuario es null
         if (user.password === null) {
-            res.status(401).json({ error: 'Contraseña del usuario no está definida' });
-            return;
+            return res.status(401).json({ error: 'Contraseña del usuario no está definida' });
         }
 
         // Comparar las contraseñas
         const passwordMatch = await comparePasswords(password, user.password);
         if (!passwordMatch) {
-            res.status(401).json({ error: 'Usuario y contraseñas no coinciden' });
-            return;
+            return res.status(401).json({ error: 'Usuario y contraseñas no coinciden' });
         }
-
-        // Generar token (asumiendo que tienes una función para esto)
-        const token = generateToken(user);
-
-        // Obtener la estructura de permisos del rol del usuario
+        // Si el rol es "Amsix", solo devolver el token
+        if (user.rol.nombre === 'Siac-rm') {
+            const tokensiac = generateToken1(user);
+            return res.status(200).json({ tokensiac });
+        }
+         // Obtener la estructura de permisos del rol del usuario
         const permissions = user.rol.rolPermissions.map((rolPermission) => ({
             id: rolPermission.permission.id,
             name: rolPermission.permission.name,
         }));
 
-        // Crear la respuesta de usuario
+        // Crear la respuesta de usuario con los permisos y el token
         const data = {
-            id:user.id, 
+            id: user.id,
             operador_id: user.operador_id,
-            nombre_completo: user.nombre+' '+user.apellidos,
-            token : generateToken(user),          
+            nombre_completo: user.nombre + ' ' + user.apellidos,
+            token: generateToken(user), // Utilizar el token del usuario
             permissions: permissions,
         };
         // Enviar respuesta con los datos y el token
-        res.status(200).json({ data });
-
+        return res.status(200).json({ data });
     } catch (error: any) {
         console.log('Error: ', error);
-        res.status(500).json({ error: 'Error en el servidor' });
+        return res.status(500).json({ error: 'Error en el servidor' });
     }
 };
 // login con un solo 

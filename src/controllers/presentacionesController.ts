@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import prisma from '../models/presentacion'
-
+import { prisma } from "../models/prismaClient"; 
 export const createPresentacion= async (req: Request, res: Response): Promise<void> => {
     try {
         let { nombre,humedad, merma,cantidad} = req.body
@@ -8,7 +7,7 @@ export const createPresentacion= async (req: Request, res: Response): Promise<vo
             res.status(400).json({ message: 'El nombre de la presentacion es obligatoria' })
             return
         }
-        const presentacion = await prisma.create(
+        const presentacion = await prisma.presentacion.create(
             {
                 data: {
                     nombre,
@@ -27,7 +26,7 @@ export const createPresentacion= async (req: Request, res: Response): Promise<vo
 
 export const getAllPresentacion = async (req: Request, res: Response): Promise<void> => {
     try {
-        const presentacion = await prisma.findMany()
+        const presentacion = await prisma.presentacion.findMany()
         res.status(200).json(presentacion);
     } catch (error: any) {
         console.log(error)
@@ -38,7 +37,7 @@ export const getAllPresentacion = async (req: Request, res: Response): Promise<v
 export const getPresentacionById = async (req: Request, res: Response): Promise<void> => {
     const presentacionId = parseInt(req.params.id)
     try {
-        const presentacion = await prisma.findUnique({
+        const presentacion = await prisma.presentacion.findUnique({
             where: {
                 id: presentacionId
             }
@@ -73,7 +72,7 @@ export const updatePresentacion = async (req: Request, res: Response): Promise<v
         if (cantidad) {
             dataToUpdate.cantidad =cantidad
         }
-        const presentacion = await prisma.update({
+        const presentacion = await prisma.presentacion.update({
             where: {
                 id: presentacionId
             },
@@ -94,7 +93,7 @@ export const updatePresentacion = async (req: Request, res: Response): Promise<v
 export const deletePresentacion = async (req: Request, res: Response): Promise<void> => {
     const presentacionId = parseInt(req.params.id)
     try {
-        await prisma.delete({
+        await prisma.presentacion.delete({
             where: {
                 id: presentacionId
             }
