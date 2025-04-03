@@ -6,7 +6,7 @@ const router = express.Router();
 router.get('/verificacion', getFormintHash) // Ruta de acceso publico
 router.post('/', authenticateToken,authorizePermission('create_formcooperativa'), createForms)
 router.get('/', authenticateToken,authorizePermission('view_formcooperativa'), getAllForms)
-router.get('/reducido', authenticateToken,authorizePermission('view_formcoopetativa_reduced'), getAllFormReducidoCooperativa)
+router.get('/reducido', authenticateToken,authorizePermission('view_formcooperativa_reduced'), getAllFormReducidoCooperativa)
 router.get('/operador/reducido/:id', authenticateToken,authorizePermission('view_formcooperativa_operator_reduced'), getAllFormOperatorReducido);
 router.get('/:id', authenticateToken,authorizePermission('view_formcooperativa_id'), getFormById);
 router.get('/print/:id', authenticateToken,authorizePermission('print_formcooperativa_id'), getFormIntByIdPDF);

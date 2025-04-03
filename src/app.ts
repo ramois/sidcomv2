@@ -9,6 +9,7 @@ import operatorRoutes from './routes/operatorRoutes'
 import sampleRoutes from './routes/sampleRoutes'
 import formextRoutes from './routes/formextRoutes'
 import formintRoutes from './routes/formintRoutes'
+import formcolaRoutes from './routes/formcolaRoutes'
 import formintcooperativaRoutes from './routes/formintCooperativaRoutes'
 import rolRoutes from './routes/rolRoutes'
 import permissionRoutes from './routes/permissionRoutes'
@@ -32,6 +33,7 @@ app.use('/operator', operatorRoutes)
 app.use('/sample', sampleRoutes)
 app.use('/formext', formextRoutes)
 app.use('/formint', formintRoutes)
+app.use('/formcola', formcolaRoutes)
 app.use('/formintcooperativa', formintcooperativaRoutes)
 app.use('/roles', rolRoutes)
 app.use('/permisos', permissionRoutes)

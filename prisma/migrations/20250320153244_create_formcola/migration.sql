@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Operator" ALTER COLUMN "nit" SET DATA TYPE BIGINT;

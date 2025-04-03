@@ -1,5 +1,6 @@
 import { Request, Response, RequestHandler } from 'express';
 import { prisma } from "../models/prismaClient"; 
+import { convertBigIntToString } from "../utils/convertBigInt";
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -329,20 +330,17 @@ if (!Array.isArray(oficinasParsed)) {
       }
       // Generación de un hash único para el operador
       const generateUniqueHash = async (): Promise<string> => {
-        let hash: string = '';
-        let hashExists = true;
-
-        while (hashExists) {
-          hash = generateRandomString(16);
-          const existingOperator = await prisma.operator.findUnique({
-            where: { hash }
+          let hash: string = '';
+          await prisma.$transaction(async (tx) => {
+              let existingForm: any;  
+              do {
+                  hash = generateRandomString(32);  // Generar el hash aleatorio
+                  existingForm = await tx.operator.findUnique({
+                      where: { hash },
+                  });
+              } while (existingForm);  // Si existe el hash, volvemos a intentarlo
           });
-
-          if (!existingOperator) {
-            hashExists = false;
-          }
-        }
-        return hash;
+          return hash;  // Devuelvo el hash único
       };
       const generateRandomString = (length: number): string => {
         const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@$^*()-_<>[]';
@@ -428,7 +426,8 @@ if (!Array.isArray(oficinasParsed)) {
         const arrendamientosData = arrendamientosParsed.map((arrendamiento: any) => ({
             operador_id: operator.id,
             codigo_unico: arrendamiento.codigo_unico ? parseInt(arrendamiento.codigo_unico, 10) : null,
-            nro_cuadricula: arrendamiento.nro_cuadricula ? parseInt(arrendamiento.nro_cuadricula, 10) : null,
+            extension: arrendamiento.extension ? parseInt(arrendamiento.extension, 10) : null,
+            unidad_extension: arrendamiento.unidad_extension ? parseInt(arrendamiento.unidad_extension, 10) : null,
             denominacion_area: arrendamiento.denominacion_area || null, // Puede ser null si el modelo lo permite
             departamento_id: arrendamiento.departamento_id ? parseInt(arrendamiento.departamento_id, 10) : null,
             municipio_id: arrendamiento.municipio_id ? parseInt(arrendamiento.municipio_id, 10) : 1, // Valor por defecto si es obligatorio
@@ -454,11 +453,11 @@ if (!Array.isArray(oficinasParsed)) {
             data: oficinasData,
             });
         }
-        res.status(201).json({
+        res.status(200).json(convertBigIntToString({
             operador: operator,
             arrendamientos:arrendamientosData,
             oficinas: oficinasData
-          });
+          }));
     } catch (error: any) {
       if (error?.code === 'P2002' && error?.meta?.target?.includes('razon_social')) {
         res.status(400).json({ message: 'La razón social ingresada ya existe' });
@@ -477,7 +476,7 @@ export const getAllOperators = async (req: Request, res: Response): Promise<void
                 oficinas:true,
             }
         });
-        res.status(200).json(operators);
+        res.status(200).json(convertBigIntToString(operators));
     } catch (error: any) {
         console.log(error)
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' })
@@ -491,7 +490,7 @@ export const getAllOperatorsSimple = async (req: Request, res: Response): Promis
                 razon_social: true
             }
         })
-        res.status(200).json(operators)
+        res.status(200).json(convertBigIntToString(operators));
     } catch (error: any) {
         console.log(error)
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' })
@@ -513,7 +512,7 @@ export const getOperatorById= async (req: Request, res: Response): Promise<void>
             res.status(404).json({ error: 'El operador minero no fue encontrado' })
             return
         }
-        res.status(200).json(operator)
+        res.status(200).json(convertBigIntToString(operator));
     } catch (error: any) {
         console.log(error)
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' })
@@ -545,7 +544,8 @@ export const getOperatorHash = async (req: Request, res: Response): Promise<void
             return
         }
         // Si se encuentra, respondemos con los datos del operador y un código de éxito 200
-        res.status(200).json(operador);
+        //res.status(200).json(operador);
+        res.status(200).json(convertBigIntToString(operador));
 
     } catch (error: any) {
         // Si hay un error inesperado, respondemos con un error 500
@@ -658,8 +658,8 @@ export const updateOperators: RequestHandler<{ id: string }, any, any, any, Mult
             updated_at: new Date(),
           },
         });
-  
-        res.status(200).json(updatedOperator);
+        res.status(200).json(convertBigIntToString(updatedOperator));
+        //res.status(200).json(updatedOperator);
       } catch (error: any) {
         if (error?.code === 'P2002' && error?.meta?.target?.includes('razon_social')) {
           res.status(400).json({ error: 'La razón social ingresada ya existe' });

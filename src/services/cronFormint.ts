@@ -1,34 +1,27 @@
 import cron from 'node-cron';
-import prisma from '../models/formint'
-
+import { prisma } from "../models/prismaClient"; 
 // Esta tarea se ejecutará cada 15 minutos
 cron.schedule('*/15 * * * *', async () => {
     try {
-        // Consultar todos los formularios con estado "EMITIDO" que tienen más de 4 días
-        const formulariosEmitidos = await prisma.findMany({
+        const fechaLimite = new Date();
+        fechaLimite.setDate(fechaLimite.getDate() - 4); // Fecha de 4 días atrás
+
+        // Actualizar en una sola consulta todos los formularios "EMITIDO" a "VENCIDO"
+        const resultado = await prisma.formInt.updateMany({
             where: {
                 estado: 'EMITIDO',
-                fecha_creacion: {
-                    lt: new Date(new Date().setDate(new Date().getDate() - 4)) // Fecha de 4 días atrás
-                }
-            }
+                fecha_creacion: { lt: fechaLimite }
+            },
+            data: { estado: 'VENCIDO' }
         });
 
-        // Si encontramos formularios emitidos que deben ser actualizados
-        if (formulariosEmitidos.length > 0) {
-            // Actualizar todos los formularios "EMITIDOS" a "VENCIDO"
-            for (const formulario of formulariosEmitidos) {
-                await prisma.update({
-                    where: { id: formulario.id },
-                    data: { estado: 'VENCIDO' }
-                });
-            }
-
-            console.log(`Actualizados ${formulariosEmitidos.length} formularios a 'VENCIDO'.`);
+        if (resultado.count > 0) {
+            console.log(`✅ ${resultado.count} Formularios Internos han sido actualizados a 'VENCIDO'.`);
         } else {
-            console.log('No hay formularios emitidos que hayan vencido.');
+            console.log('✅ No hay Formularios Internos emitidos que hayan vencido.');
         }
     } catch (error) {
-        console.error('Error al actualizar formularios vencidos:', error);
+        console.error('❌ Error al actualizar Formularios Internos vencidos:', error);
     }
 });
+

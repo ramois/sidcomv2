@@ -7,7 +7,7 @@ cron.schedule('*/15 * * * *', async () => {
         fechaLimite.setDate(fechaLimite.getDate() - 4); // Fecha de 4 días atrás
 
         // Actualizar en una sola consulta todos los formularios "EMITIDO" a "VENCIDO"
-        const resultado = await prisma.formExt.updateMany({
+        const resultado = await prisma.formCola.updateMany({
             where: {
                 estado: 'EMITIDO',
                 fecha_creacion: { lt: fechaLimite }
@@ -16,12 +16,11 @@ cron.schedule('*/15 * * * *', async () => {
         });
 
         if (resultado.count > 0) {
-            console.log(`✅ ${resultado.count} Formularios Externos han sido actualizados a 'VENCIDO'.`);
+            console.log(`✅ ${resultado.count} Formularios de Cola han sido actualizados a 'VENCIDO'.`);
         } else {
-            console.log('✅ No hay Formularios Externos emitidos que hayan vencido.');
+            console.log('✅ No hay Formularios de Cola emitidos que hayan vencido.');
         }
     } catch (error) {
-        console.error('❌ Error al actualizar Formularios Externos vencidos:', error);
+        console.error('❌ Error al actualizar Formularios de Cola vencidos:', error);
     }
 });
-

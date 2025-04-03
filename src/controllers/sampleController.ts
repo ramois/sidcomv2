@@ -5,53 +5,43 @@ import multer from 'multer';
 import path from 'path';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';  
 import { Decimal } from "@prisma/client/runtime/library"; // Asegúrate de tener esta importación si usas Decimal
-import operator from '../models/operator';
-// Otros modelos de Prisma que se usarán para las validaciones
 
 const generateSampleNumber = async (): Promise<string> => {
     const currentYear = new Date().getFullYear().toString();
-    const samples = await prisma.sample.findMany({
-        where: {
-            nro_formulario: {
-                contains: currentYear, // Buscar formularios que contienen el año
+
+    // Usamos una transacción para asegurar que no haya condiciones de carrera
+    const result = await prisma.$transaction(async (prisma) => {
+        // Contar los formularios del año actual
+        const totalForms = await prisma.sample.count({
+            where: {
+                nro_formulario: {
+                    endsWith: `/${currentYear}`,
+                },
             },
-        },
-        orderBy: {
-            nro_formulario: 'desc', // Ordenar los formularios de forma descendente
-        },
+        });
+
+        // Si no hay formularios este año, empezar con 1
+        const nextNumber = totalForms === 0 ? 1 : totalForms + 1;
+        // Ahora, retorna el número generado de forma segura
+        return `TMG-${nextNumber}/${currentYear}`;
     });
-    if (samples.length === 0) {
-        return `TMG-1/${currentYear}`;
-    }
-    let maxNumber = 0;
-    samples.forEach(sample => {
-        const numberPart = sample.nro_formulario.split('-')[1].split('/')[0];
-        const sampleNumber = parseInt(numberPart, 10);
-        if (!isNaN(sampleNumber)) {
-            maxNumber = Math.max(maxNumber, sampleNumber);
-        }
-    });
-    const nextNumber = maxNumber + 1;
-    return `TMG-${nextNumber}/${currentYear}`;
+    return result;
 };
+
 // Función para generar un hash único
 const generateUniqueHash = async (): Promise<string> => {
     let hash: string = '';
-    let hashExists = true;
-
-    while (hashExists) {
-        hash = generateRandomString(16);
-        const existingSample = await prisma.sample.findUnique({
-            where: { hash }
-        });
-
-        if (!existingSample) {
-            hashExists = false;
-        }
-    }
-    return hash;
+    await prisma.$transaction(async (tx) => {
+        let existingForm: any;  
+        do {
+            hash = generateRandomString(32);  // Generar el hash aleatorio
+            existingForm = await tx.sample.findUnique({
+                where: { hash },
+            });
+        } while (existingForm);  // Si existe el hash, volvemos a intentarlo
+    });
+    return hash;  // Devuelvo el hash único
 };
-
 const generateRandomString = (length: number): string => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@$^*()-_<>[]';
     let result = '';
@@ -205,7 +195,7 @@ export const createSample = async (req: AuthenticatedRequest, res: Response): Pr
                 },
                 fecha_hora_tdm,
                 justificacion_anulacion,
-                humedad,
+                humedad:humedad ? new Decimal(humedad) : undefined,
                 created_at: new Date(),
                 updated_at: new Date(),
                 hash: uniqueHash,
@@ -673,42 +663,43 @@ export const getSampleByNroFormulariosPDF = async (req: Request, res: Response):
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
     }
 };
-
 const generateSamplesNumbers = async (estado: string): Promise<string> => {
-    const currentYear = new Date().getFullYear().toString(); // Obtener el año actual como string
+    const currentYear = new Date().getFullYear().toString();
+    const prefix = estado === "APROBADO" ? "TM-" : "TMG-";
 
-    // Determinamos el prefijo en base al estado
-    const prefix = estado === "APROBADO" ? "TM-" : "TMG-"; // Usamos "TM-" si el estado es APROBADO, "TMG-" si es otro estado
-    // Buscar todos los formularios con el prefijo correspondiente ('TM-' o 'TMG-') para el año actual
+    // Buscar todos los formularios del año actual con el prefijo correcto
     const forms = await prisma.sample.findMany({
         where: {
             nro_formulario: {
-                startsWith: prefix, // Filtramos por el prefijo ('TM-' o 'TMG-')
-                contains: currentYear, // Aseguramos que el año también esté presente
+                startsWith: prefix,
+                endsWith: `/${currentYear}`,
             },
         },
-    });
-    // Extraemos los números de formulario ya existentes para el año y prefijo correspondiente
-    const existingNumbers = forms.map(form => {
-        const numberPart = form.nro_formulario.split('-')[1].split('/')[0];
-        return parseInt(numberPart, 10);
+        select: { nro_formulario: true },
     });
 
-    // Si no hay formularios, el siguiente número es 1
-    if (existingNumbers.length === 0) {
-        return `${prefix}1/${currentYear}`;
+    let maxNumber = 0;
+
+    // Extraer el número más alto
+    forms.forEach(form => {
+        const match = form.nro_formulario.match(/^(TM|TMG)-(\d+)\/\d{4}$/);
+        if (match) {
+            const formNumber = parseInt(match[2], 10);
+            maxNumber = Math.max(maxNumber, formNumber);
+        }
+    });
+
+    let nextNumber = maxNumber + 1;
+    let newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
+
+    // Verificar si el número ya existe, en caso afirmativo, incrementar el número
+    while (await prisma.sample.findUnique({ where: { nro_formulario: newFormNumber } })) {
+        nextNumber++;
+        newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
     }
 
-    // Obtenemos el mayor número de formulario existente
-    const maxNumber = Math.max(...existingNumbers);
-
-    // El siguiente número será el siguiente en la secuencia
-    const nextNumber = maxNumber + 1;
-
-    // Devolvemos el nuevo número de formulario con el prefijo adecuado
-    return `${prefix}${nextNumber}/${currentYear}`;
+    return newFormNumber;
 };
-
 // Configuración de Multer para almacenar los archivos
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -777,7 +768,6 @@ export const updateEstado: RequestHandler<any, any, any, { id: string }, MulterF
             if (currentSample.estado !== 'SOLICITADO') {
                 return res.status(400).json({ error: 'La muestra debe estar en estado SOLICITADO para poder ser aprobada' });
             }
-
             // Validaciones de campos obligatorios
             if (!estado) {
                 return res.status(400).json({ message: 'El estado es obligatorio' });
@@ -1128,6 +1118,7 @@ export const updateSample = async (req: Request, res: Response): Promise<void> =
         total_parcial,
         peso_neto_total,
         peso_neto_parcial,
+        humedad,
         observaciones,
         lugar_verificacion,
         ubicacion_lat,
@@ -1218,6 +1209,9 @@ export const updateSample = async (req: Request, res: Response): Promise<void> =
         }
         if (peso_neto_parcial !== undefined && peso_neto_parcial !== null) {
             dataToUpdate.peso_neto_parcial = new Decimal(peso_neto_parcial);
+        }
+        if (humedad !== undefined && humedad !== null) {
+            dataToUpdate.humedad = new Decimal(humedad);
         }
         // Actualizamos el formulario principal
         const sample = await prisma.sample.update({

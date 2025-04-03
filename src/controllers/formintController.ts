@@ -1,59 +1,41 @@
 import { Request, Response } from "express";
 import { prisma } from "../models/prismaClient";  
+import { convertBigIntToString } from "../utils/convertBigInt";
 import crypto from 'crypto';
 import { Decimal } from "@prisma/client/runtime/library";
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 // Función para generar el número de formulario con transacción
 const generateFormNumber = async (): Promise<string> => {
-    const currentYear = new Date().getFullYear().toString(); // Obtener el año actual como string
-
-    // Buscar todos los formularios con los prefijos 'G-', 'I-', 'A-' para el año actual
-    const forms = await prisma.formInt.findMany({
-        where: {
-            nro_formulario: {
-                contains: currentYear, // Buscar formularios que contienen el año
+    const currentYear = new Date().getFullYear().toString();
+    const result = await prisma.$transaction(async (prisma) => {
+        // Contar los formularios del año actual
+        const totalForms = await prisma.formInt.count({
+            where: {
+                nro_formulario: {
+                    endsWith: `/${currentYear}`,
+                },
             },
-        },
-        orderBy: {
-            nro_formulario: 'desc', // Ordenamos los formularios por el número de formulario de forma descendente
-        },
+        });
+        const nextNumber = totalForms === 0 ? 1 : totalForms + 1;
+        return `G-${nextNumber}/${currentYear}`;
     });
-    // Si no se encuentran formularios, comenzamos con el número 1
-    if (forms.length === 0) {
-        return `G-1/${currentYear}`;
-    }
-    // Variable para el mayor número de formulario encontrado
-    let maxNumber = 0;
-    // Recorrer todos los formularios para encontrar el mayor número
-    forms.forEach(form => {
-        const numberPart = form.nro_formulario.split('-')[1].split('/')[0];
-        const formNumber = parseInt(numberPart, 10);
-        if (!isNaN(formNumber)) {
-            maxNumber = Math.max(maxNumber, formNumber); // Encontramos el mayor número
-        }
-    });
-    // Calculamos el siguiente número
-    const nextNumber = maxNumber + 1;
-    return `G-${nextNumber}/${currentYear}`;
+    return result;
 };
 
 // Función para generar un hash único
 const generateUniqueHash = async (): Promise<string> => {
     let hash: string = '';
-    let hashExists = true;
-
-    while (hashExists) {
-        hash = generateRandomString(16);
-        const existingForm = await prisma.formInt.findUnique({
-            where: { hash }
-        });
-
-        if (!existingForm) {
-            hashExists = false;
-        }
-    }
-    return hash;
+    await prisma.$transaction(async (tx) => {
+        let existingForm: any;  
+        do {
+            hash = generateRandomString(32);  
+            existingForm = await tx.formInt.findUnique({
+                where: { hash },
+            });
+        } while (existingForm);
+    });
+    return hash;  
 };
 
 // Función para generar un string aleatorio
@@ -77,9 +59,6 @@ export const createForms = async (req: AuthenticatedRequest, res: Response): Pro
             cantidad,
             peso_bruto_humedo,
             peso_neto,
-            tara,
-            humedad,
-            merma,
             municipio_origen,
             minerales,
             des_tipo,
@@ -96,13 +75,15 @@ export const createForms = async (req: AuthenticatedRequest, res: Response): Pro
             empresa_ferrea,
             fecha_ferrea,
             hr_ferrea,
-            tara_volqueta,
             traslado_mineral,
             nro_viajes,
         } = req.body;
 
         const user_id = req.user?.id;
-
+        const humedad = req.body.humedad !== undefined && req.body.humedad !== null ? new Decimal(req.body.humedad) : null;
+        const merma = req.body.merma !== undefined && req.body.merma !== null ? new Decimal(req.body.merma) : null;    
+        const tara = req.body.tara !== undefined && req.body.tara !== null ? new Decimal(req.body.tara) : null;
+        const tara_volqueta = req.body.tara_volqueta !== undefined && req.body.tara_volqueta !== null ? new Decimal(req.body.tara_volqueta) : null;
         if (!user_id) {
             return res.status(400).json({ message: 'No se ha encontrado un usuario asociado al token' });
         }
@@ -187,9 +168,9 @@ export const createForms = async (req: AuthenticatedRequest, res: Response): Pro
                 cantidad,
                 peso_bruto_humedo: new Decimal(peso_bruto_humedo),
                 peso_neto: new Decimal(peso_neto),
-                tara,
-                humedad,
-                merma,
+                tara: tara,
+                humedad:humedad,
+                merma: merma,
                 minerales: {
                     create: minerales.map((mineral: any) => ({
                         mineral: { connect: { id: mineral.mineralId } },
@@ -215,7 +196,7 @@ export const createForms = async (req: AuthenticatedRequest, res: Response): Pro
                 empresa_ferrea,
                 fecha_ferrea: fecha_ferrea ? new Date(fecha_ferrea).toISOString() : null,
                 hr_ferrea,
-                tara_volqueta,
+                tara_volqueta:tara_volqueta,
                 traslado_mineral,
                 nro_viajes,
                 created_at: new Date(),
@@ -454,20 +435,20 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
 
     try {
         // Validaciones para verificar si los registros existen
-        const operador = await prisma.operator.findUnique({
+        const operador = operador_id ? await prisma.operator.findUnique({
             where: { id: operador_id },
-        });
-        if (!operador) {
-            res.status(404).json({ error: 'El operador no existe' });
+        }) : null;
+        if (operador_id && !operador) {
+             res.status(404).json({ error: 'El operador no existe' });
         }
 
-        const municipioDestino = await prisma.municipios.findUnique({
+        const municipioDestino = id_municipio_destino ? await prisma.municipios.findUnique({
             where: { id: id_municipio_destino },
-        });
-        if (!municipioDestino) {
+        }) : null;
+        if (id_municipio_destino && !municipioDestino) {
             res.status(404).json({ error: 'El municipio de destino no existe' });
         }
-        // Validar municipios de origen (si existen todos)
+
         if (municipio_origen && Array.isArray(municipio_origen) && municipio_origen.length > 0) {
             const municipiosNoExistentes = [];
             for (const municipio of municipio_origen) {
@@ -479,13 +460,12 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
                 }
             }
             if (municipiosNoExistentes.length > 0) {
-                    res.status(404).json({
+              res.status(404).json({
                     error: `Los siguientes municipios de origen no existen: ${municipiosNoExistentes.join(', ')}`,
                 });
             }
         }
 
-        // Validar minerales (si existen todos)
         if (minerales && Array.isArray(minerales) && minerales.length > 0) {
             const mineralesNoExistentes = [];
             for (const mineral of minerales) {
@@ -497,48 +477,51 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
                 }
             }
             if (mineralesNoExistentes.length > 0) {
-                    res.status(404).json({
+               res.status(404).json({
                     error: `Los siguientes minerales no existen: ${mineralesNoExistentes.join(', ')}`,
                 });
             }
         }
 
-        // Datos a actualizar en el modelo FormInt
-        let dataToUpdate: any = {
-            operador_id,
-            lote,
-            presentacion_id,
-            cantidad,
-            peso_bruto_humedo: new Decimal(peso_bruto_humedo), // Asegúrate de convertir números decimales si es necesario
-            peso_neto: new Decimal(peso_neto),
-            tara,
-            humedad,
-            merma,
-            des_tipo,
-            des_comprador,
-            des_planta,
-            id_municipio_destino,
-            tipo_transporte,
-            placa,
-            nom_conductor,
-            licencia,
-            observaciones,
-            justificacion_anulacion,
-            nro_vagon,
-            empresa_ferrea,
-            fecha_ferrea,
-            hr_ferrea,
-            tara_volqueta,
-            traslado_mineral,
-            nro_viajes,
-            updated_at: new Date(), // Actualización de la fecha
-        };
-        // Actualizamos el formulario principal
+        // Construir los datos a actualizar solo con los campos proporcionados
+        let dataToUpdate: any = {};
+
+        // Solo agregamos los campos que existen en el cuerpo de la solicitud
+        if (operador_id) dataToUpdate.operador_id = operador_id;
+        if (lote) dataToUpdate.lote = lote;
+        if (presentacion_id) dataToUpdate.presentacion_id = presentacion_id;
+        if (cantidad) dataToUpdate.cantidad = cantidad;
+        if (peso_bruto_humedo) dataToUpdate.peso_bruto_humedo = new Decimal(peso_bruto_humedo);
+        if (peso_neto) dataToUpdate.peso_neto = new Decimal(peso_neto);
+        if (tara) dataToUpdate.tara = new Decimal(tara);
+        if (humedad) dataToUpdate.humedad = new Decimal(humedad);
+        if (merma) dataToUpdate.merma = new Decimal(merma);
+        if (tara_volqueta) dataToUpdate.tara_volqueta = new Decimal(tara_volqueta);
+        if (des_tipo) dataToUpdate.des_tipo = des_tipo;
+        if (des_comprador) dataToUpdate.des_comprador = des_comprador;
+        if (des_planta) dataToUpdate.des_planta = des_planta;
+        if (id_municipio_destino) dataToUpdate.id_municipio_destino = id_municipio_destino;
+        if (tipo_transporte) dataToUpdate.tipo_transporte = tipo_transporte;
+        if (placa) dataToUpdate.placa = placa;
+        if (nom_conductor) dataToUpdate.nom_conductor = nom_conductor;
+        if (licencia) dataToUpdate.licencia = licencia;
+        if (observaciones) dataToUpdate.observaciones = observaciones;
+        if (justificacion_anulacion) dataToUpdate.justificacion_anulacion = justificacion_anulacion;
+        if (nro_vagon) dataToUpdate.nro_vagon = nro_vagon;
+        if (empresa_ferrea) dataToUpdate.empresa_ferrea = empresa_ferrea;
+        if (fecha_ferrea) dataToUpdate.fecha_ferrea = fecha_ferrea;
+        if (hr_ferrea) dataToUpdate.hr_ferrea = hr_ferrea;
+        if (traslado_mineral) dataToUpdate.traslado_mineral = traslado_mineral;
+        if (nro_viajes) dataToUpdate.nro_viajes = nro_viajes;
+        dataToUpdate.updated_at = new Date(); // Aseguramos que la fecha siempre se actualice
+
+        // Actualizamos el formulario
         const formint = await prisma.formInt.update({
             where: { id: formId },
             data: dataToUpdate,
         });
-        // Actualizar la relación de minerales
+
+        // Si se enviaron minerales, actualizamos la relación
         if (minerales && Array.isArray(minerales) && minerales.length > 0) {
             await prisma.formInt.update({
                 where: { id: formId },
@@ -547,8 +530,8 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
                         deleteMany: {}, // Eliminar todas las relaciones actuales de minerales
                         createMany: {
                             data: minerales.map((mineral: any) => ({
-                                mineralId: mineral.mineralId, // Usar mineralId en lugar de mineral
-                                ley: new Decimal(mineral.ley), // Asegúrate de usar Decimal para la ley
+                                mineralId: mineral.mineralId,
+                                ley: new Decimal(mineral.ley),
                                 unidad: mineral.unidad,
                             })),
                         },
@@ -556,7 +539,8 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
                 },
             });
         }
-        // Actualizar la relación con los municipios de origen
+
+        // Si se enviaron municipios de origen, actualizamos la relación
         if (municipio_origen && Array.isArray(municipio_origen) && municipio_origen.length > 0) {
             await prisma.formInt.update({
                 where: { id: formId },
@@ -565,7 +549,7 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
                         deleteMany: {}, // Eliminar todas las relaciones actuales de municipios de origen
                         createMany: {
                             data: municipio_origen.map((municipio: any) => ({
-                                municipioId: municipio.id, // Relacionamos el municipio por su ID
+                                municipioId: municipio.id,
                             })),
                         },
                     },
@@ -577,24 +561,19 @@ export const updateForms = async (req: Request, res: Response): Promise<void> =>
         const updatedForm = await prisma.formInt.findUnique({
             where: { id: formId },
             include: {
-                minerales: true,            // Incluir los minerales actualizados
-                municipio_origen: true,     // Incluir los municipios de origen actualizados
+                minerales: true,
+                municipio_origen: true,
             },
         });
+
         // Respondemos con el formulario actualizado
         res.status(200).json(updatedForm);
     } catch (error: any) {
-        // Manejo de errores según el tipo de error
-        if (error?.code === 'P2002' && error?.meta?.target?.includes('email')) {
-            res.status(400).json({ error: 'El email ingresado ya existe' });
-        } else if (error?.code === 'P2025') {
-            res.status(404).json('Formulario no encontrado');
-        } else {
-            console.error(error);
-            res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
-        }
+        console.error(error);
+        res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
     }
 };
+
 export const getFormIntByIdPDF = async (req: Request, res: Response): Promise<void> => {
     const formintId = parseInt(req.params.id);
     try {
@@ -660,12 +639,12 @@ export const getFormIntByIdPDF = async (req: Request, res: Response): Promise<vo
             comprador:formint.des_comprador,
             munipio_destino:formint.municipio?.municipio,
             departamento_destino:formint.municipio?.departamento?.nombre, 
-            tipo_transpote:formint.tipo_transporte,
+            tipo_transporte:formint.tipo_transporte,
             tara_volqueta:formint.tara_volqueta,
             conductor:formint.nom_conductor,
             placa:formint.placa,
             licencia:formint.licencia,
-            observacion:formint.observaciones,
+            observaciones:formint.observaciones,
             estado:formint.estado,
             hash:formint.hash,
             nro_vagon:formint.nro_vagon,
@@ -673,7 +652,8 @@ export const getFormIntByIdPDF = async (req: Request, res: Response): Promise<vo
             fecha_ferrea:formint.fecha_ferrea,
             hr_ferrea:formint.hr_ferrea,
         };
-        res.status(200).json(response);
+        res.status(200).json(convertBigIntToString(response));
+        //res.status(200).json(response);
     } catch (error: any) {
         console.log(error);
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
@@ -741,18 +721,19 @@ export const getFormintByNroFormulariosPDF = async (req: Request, res: Response)
             comprador:formint.des_comprador,
             munipio_destino:formint.municipio?.municipio,
             departamento_destino:formint.municipio?.departamento?.nombre, 
-            tipo_transpote:formint.tipo_transporte,
+            tipo_transporte:formint.tipo_transporte,
             tara_volqueta:formint.tara_volqueta,
             conductor:formint.nom_conductor,
             placa:formint.placa,
             licencia:formint.licencia,
-            observacion:formint.observaciones,
+            observaciones:formint.observaciones,
             nro_vagon:formint.nro_vagon,
             empresa_ferrea:formint.empresa_ferrea,
             fecha_ferrea:formint.fecha_ferrea,
             hr_ferrea:formint.hr_ferrea,
         };
-        res.status(200).json(response);
+        res.status(200).json(convertBigIntToString(response));
+        //res.status(200).json(response);
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
@@ -841,7 +822,8 @@ export const getFormintHash = async (req: Request, res: Response): Promise<void>
             fecha_ferrea:formint.fecha_ferrea,
             hr_ferrea:formint.hr_ferrea,
         };
-        res.status(200).json(formattedFormint);
+        res.status(200).json(convertBigIntToString(formattedFormint));
+        //res.status(200).json(formattedFormint);
     } catch (error: any) {
         console.error('Error al obtener Formint por hash:', error);
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
@@ -912,94 +894,127 @@ export const updateFormsAnulacion = async (req: Request, res: Response): Promise
     }
 };
 const generateFormNumbers = async (estado: string): Promise<string> => {
-    const currentYear = new Date().getFullYear().toString(); // Obtener el año actual como string
+    const currentYear = new Date().getFullYear().toString();
+    const prefix = estado === "EMITIDO" ? "I-" : "G-";
 
-    // Determinamos el prefijo en base al estado
-    const prefix = estado === "EMITIDO" ? "I-" : "G-"; // Usamos "I-" si el estado es EMITIDO, "G-" si es otro estado
-
-    // Buscar todos los formularios con el prefijo correspondiente ('G-' o 'I-') para el año actual
-    const forms = await prisma.formInt.findMany({
-        where: {
-            nro_formulario: {
-                startsWith: prefix, // Filtramos por el prefijo (G- o I-)
-                contains: currentYear, // Aseguramos que el año también esté presente
+    return await prisma.$transaction(async (prisma) => {
+        // Buscar todos los formularios existentes del año actual con el prefijo correcto
+        const forms = await prisma.formInt.findMany({
+            where: {
+                nro_formulario: {
+                    startsWith: prefix,
+                    endsWith: `/${currentYear}`,
+                },
             },
-        },
+            select: { nro_formulario: true },
+        });
+
+        let maxNumber = 0;
+        forms.forEach(form => {
+            const match = form.nro_formulario.match(/^[IG]-(\d+)\/\d{4}$/);
+            if (match) {
+                const formNumber = parseInt(match[1], 10);
+                maxNumber = Math.max(maxNumber, formNumber);
+            }
+        });
+
+        let nextNumber = maxNumber + 1;
+        let newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
+
+        // Evitar duplicados: Si ya existe, incrementar hasta encontrar uno disponible
+        while (await prisma.formInt.findUnique({ where: { nro_formulario: newFormNumber } })) {
+            nextNumber++;
+            newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
+        }
+
+        return newFormNumber;
     });
-
-    // Extraemos los números de formulario ya existentes para el año y prefijo correspondiente
-    const existingNumbers = forms.map(form => {
-        const numberPart = form.nro_formulario.split('-')[1].split('/')[0];
-        return parseInt(numberPart, 10);
-    });
-
-    // Si no hay formularios, el siguiente número es 1
-    if (existingNumbers.length === 0) {
-        return `${prefix}1/${currentYear}`;
-    }
-
-    // Obtenemos el mayor número de formulario existente
-    const maxNumber = Math.max(...existingNumbers);
-
-    // El siguiente número será el siguiente en la secuencia
-    const nextNumber = maxNumber + 1;
-
-    // Devolvemos el nuevo número de formulario con el prefijo adecuado
-    return `${prefix}${nextNumber}/${currentYear}`;
 };
+
 export const updateEstado = async (req: Request, res: Response): Promise<void> => {
     const formId = parseInt(req.params.id);
     const { estado } = req.body; // Solo esperamos el estado en el cuerpo de la solicitud
 
     try {
-        // Validación de los valores permitidos para el estado
         const validStates = ["EMITIDO"];
         if (!validStates.includes(estado)) {
             res.status(400).json({ error: `El estado debe ser: ${validStates.join(", ")}` });
-            return 
+            return;
         }
 
-        // Si el estado es "EMITIDO", generamos el siguiente número de formulario con el prefijo "I-"
-        let updatedNroFormulario: string | null = null;
+        // Usamos una transacción para asegurar que todo se ejecute de manera atómica
+        const result = await prisma.$transaction(async (prisma) => {
+            // Buscar el formulario actual
+            const form = await prisma.formInt.findUnique({
+                where: { id: formId },
+            });
 
-        if (estado === "EMITIDO") {
-            // Generamos el siguiente número con el prefijo "I-" solo si el estado es EMITIDO
-            updatedNroFormulario = await generateFormNumbers(estado); // Ahora solo pasamos el estado
-        }
+            if (!form) {
+                throw new Error('Formulario no encontrado');
+            }
 
-        // Datos a actualizar en el modelo FormInt
-        const fecha_creacion = new Date();
-        const fecha_vencimiento = new Date(fecha_creacion);
-        fecha_vencimiento.setDate(fecha_creacion.getDate() + 4); // Añadimos 4 días
+            // Si el estado es "EMITIDO", aseguramos que el formulario no esté ya en estado "EMITIDO"
+            if (estado === "EMITIDO") {
+                if (form.estado === "EMITIDO") {
+                    throw new Error('El formulario ya está en estado EMITIDO.');
+                }
 
-        const dataToUpdate: any = {
-            estado,
-            nro_formulario: updatedNroFormulario || undefined, // Asignamos el nuevo número solo si lo generamos
-            fecha_creacion: fecha_creacion,
-            fecha_vencimiento: fecha_vencimiento
-        };
+                // Validamos si el formulario está en un estado válido para pasar a "EMITIDO" (por ejemplo, "GENERADO")
+                if (form.estado !== "GENERADO") {
+                    throw new Error(`El formulario solo puede pasar a estado 'EMITIDO' si está en estado 'GENERADO'. Estado actual: ${form.estado}`);
+                }
 
-        // Si han pasado más de 4 días desde la fecha de creación, actualizamos el estado a "VENCIDO"
-        if (new Date() > fecha_vencimiento) {
-            dataToUpdate.estado = "VENCIDO"; // Cambiamos el estado a VENCIDO
-        }
+                // Generamos el siguiente número de formulario con el prefijo "E-" solo si el estado es "EMITIDO"
+                const updatedNroFormulario = await generateFormNumbers(estado);
 
-        // Actualizamos el formulario principal
-        const formint = await prisma.formInt.update({
-            where: { id: formId },
-            data: dataToUpdate,
+                // Datos a actualizar en el formulario
+                const fecha_creacion = new Date();
+                const fecha_vencimiento = new Date(fecha_creacion);
+                fecha_vencimiento.setDate(fecha_creacion.getDate() + 4); // Añadimos 4 días
+
+                // Si han pasado más de 4 días desde la fecha de creación, actualizamos el estado a "VENCIDO"
+                const dataToUpdate: any = {
+                    estado,
+                    nro_formulario: updatedNroFormulario,
+                    fecha_creacion,
+                    fecha_vencimiento,
+                };
+
+                if (new Date() > fecha_vencimiento) {
+                    dataToUpdate.estado = "VENCIDO"; // Cambiamos el estado a VENCIDO
+                }
+
+                // Actualizamos el formulario con los nuevos datos
+                const formint = await prisma.formInt.update({
+                    where: { id: formId },
+                    data: dataToUpdate,
+                });
+
+                return formint; // Devolvemos el formulario actualizado
+            }
+
+            // Si no es "EMITIDO", solo se actualiza el estado sin generar un nuevo número
+            const dataToUpdate: any = { estado };
+            const formint = await prisma.formInt.update({
+                where: { id: formId },
+                data: dataToUpdate,
+            });
+            return formint; // Devolvemos el formulario actualizado
         });
-
         // Responder con el estado actualizado y el formulario modificado
         res.status(200).json({
             message: 'Estado actualizado',
-            form: formint, // Devolvemos el formulario actualizado
+            form: result, // Devolvemos el formulario actualizado
         });
 
     } catch (error: any) {
         // Manejo de errores según el tipo de error
-        if (error?.code === 'P2025') {
-            res.status(404).json('Formulario no encontrado');
+        if (error.message === 'Formulario no encontrado') {
+            res.status(404).json({ error: 'Formulario no encontrado' });
+        } else if (error.message === 'El formulario ya está en estado EMITIDO.') {
+            res.status(400).json({ error: 'El formulario ya está en estado EMITIDO.' });
+        } else if (error.message.includes("El formulario solo puede pasar")) {
+            res.status(400).json({ error: error.message });
         } else {
             console.error(error);
             res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });

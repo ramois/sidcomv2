@@ -1,43 +1,27 @@
 import { Request, Response } from "express";
-import { prisma } from "../models/prismaClient";  
+import { prisma } from "../models/prismaClient";
+import { convertBigIntToString } from "../utils/convertBigInt";  
 import crypto from 'crypto';
 import { Decimal } from "@prisma/client/runtime/library";
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 // Función para generar el número de formulario con transacción
 const generateFormNumber = async (): Promise<string> => {
-    const currentYear = new Date().getFullYear().toString(); // Obtener el año actual como string
-
-    // Buscar todos los formularios con los prefijos 'G-', 'I-', 'A-' para el año actual
-    const forms = await prisma.formInt.findMany({
-        where: {
-            nro_formulario: {
-                contains: currentYear, // Buscar formularios que contienen el año
+    const currentYear = new Date().getFullYear().toString();
+    const result = await prisma.$transaction(async (prisma) => {
+        // Contar los formularios del año actual
+        const totalForms = await prisma.formInt.count({
+            where: {
+                nro_formulario: {
+                    endsWith: `/${currentYear}`,
+                },
             },
-        },
-        orderBy: {
-            nro_formulario: 'desc', // Ordenamos los formularios por el número de formulario de forma descendente
-        },
+        });
+        const nextNumber = totalForms === 0 ? 1 : totalForms + 1;
+        return `G-${nextNumber}/${currentYear}`;
     });
-    // Si no se encuentran formularios, comenzamos con el número 1
-    if (forms.length === 0) {
-        return `G-1/${currentYear}`;
-    }
-    // Variable para el mayor número de formulario encontrado
-    let maxNumber = 0;
-    // Recorrer todos los formularios para encontrar el mayor número
-    forms.forEach(form => {
-        const numberPart = form.nro_formulario.split('-')[1].split('/')[0];
-        const formNumber = parseInt(numberPart, 10);
-        if (!isNaN(formNumber)) {
-            maxNumber = Math.max(maxNumber, formNumber); // Encontramos el mayor número
-        }
-    });
-    // Calculamos el siguiente número
-    const nextNumber = maxNumber + 1;
-    return `G-${nextNumber}/${currentYear}`;
+    return result;
 };
-
 // Función para generar un hash único
 const generateUniqueHash = async (): Promise<string> => {
     let hash: string = '';
@@ -661,12 +645,12 @@ export const getFormIntByIdPDF = async (req: Request, res: Response): Promise<vo
             comprador:formint.des_comprador,
             munipio_destino:formint.municipio?.municipio,
             departamento_destino:formint.municipio?.departamento?.nombre, 
-            tipo_transpote:formint.tipo_transporte,
+            tipo_transporte:formint.tipo_transporte,
             tara_volqueta:formint.tara_volqueta,
             conductor:formint.nom_conductor,
             placa:formint.placa,
             licencia:formint.licencia,
-            observacion:formint.observaciones,
+            observaciones:formint.observaciones,
             estado:formint.estado,
             hash:formint.hash,
             nro_vagon:formint.nro_vagon,
@@ -674,7 +658,8 @@ export const getFormIntByIdPDF = async (req: Request, res: Response): Promise<vo
             fecha_ferrea:formint.fecha_ferrea,
             hr_ferrea:formint.hr_ferrea,
         };
-        res.status(200).json(response);
+        res.status(200).json(convertBigIntToString(response));
+        //res.status(200).json(response);
     } catch (error: any) {
         console.log(error);
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
@@ -763,7 +748,8 @@ export const getFormintHash = async (req: Request, res: Response): Promise<void>
             fecha_ferrea:formint.fecha_ferrea,
             hr_ferrea:formint.hr_ferrea,
         };
-        res.status(200).json(formattedFormint);
+        res.status(200).json(convertBigIntToString(formattedFormint));
+        //res.status(200).json(formattedFormint);
     } catch (error: any) {
         console.error('Error al obtener Formint por hash:', error);
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
@@ -833,100 +819,134 @@ export const updateFormsAnulacion = async (req: Request, res: Response): Promise
     }
 };
 const generateFormNumbers = async (estado: string): Promise<string> => {
-    const currentYear = new Date().getFullYear().toString(); // Obtener el año actual como string
+    const currentYear = new Date().getFullYear().toString();
+    const prefix = estado === "EMITIDO" ? "I-" : "G-";
 
-    // Determinamos el prefijo en base al estado
-    const prefix = estado === "EMITIDO" ? "I-" : "G-"; // Usamos "I-" si el estado es EMITIDO, "G-" si es otro estado
-
-    // Buscar todos los formularios con el prefijo correspondiente ('G-' o 'I-') para el año actual
-    const forms = await prisma.formInt.findMany({
-        where: {
-            nro_formulario: {
-                startsWith: prefix, // Filtramos por el prefijo (G- o I-)
-                contains: currentYear, // Aseguramos que el año también esté presente
+    return await prisma.$transaction(async (prisma) => {
+        // Buscar todos los formularios existentes del año actual con el prefijo correcto
+        const forms = await prisma.formInt.findMany({
+            where: {
+                nro_formulario: {
+                    startsWith: prefix,
+                    endsWith: `/${currentYear}`,
+                },
             },
-        },
+            select: { nro_formulario: true },
+        });
+
+        let maxNumber = 0;
+        forms.forEach(form => {
+            const match = form.nro_formulario.match(/^[IG]-(\d+)\/\d{4}$/);
+            if (match) {
+                const formNumber = parseInt(match[1], 10);
+                maxNumber = Math.max(maxNumber, formNumber);
+            }
+        });
+
+        let nextNumber = maxNumber + 1;
+        let newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
+
+        // Evitar duplicados: Si ya existe, incrementar hasta encontrar uno disponible
+        while (await prisma.formInt.findUnique({ where: { nro_formulario: newFormNumber } })) {
+            nextNumber++;
+            newFormNumber = `${prefix}${nextNumber}/${currentYear}`;
+        }
+
+        return newFormNumber;
     });
-
-    // Extraemos los números de formulario ya existentes para el año y prefijo correspondiente
-    const existingNumbers = forms.map(form => {
-        const numberPart = form.nro_formulario.split('-')[1].split('/')[0];
-        return parseInt(numberPart, 10);
-    });
-
-    // Si no hay formularios, el siguiente número es 1
-    if (existingNumbers.length === 0) {
-        return `${prefix}1/${currentYear}`;
-    }
-
-    // Obtenemos el mayor número de formulario existente
-    const maxNumber = Math.max(...existingNumbers);
-
-    // El siguiente número será el siguiente en la secuencia
-    const nextNumber = maxNumber + 1;
-
-    // Devolvemos el nuevo número de formulario con el prefijo adecuado
-    return `${prefix}${nextNumber}/${currentYear}`;
 };
+
 export const updateEstado = async (req: Request, res: Response): Promise<void> => {
     const formId = parseInt(req.params.id);
     const { estado } = req.body; // Solo esperamos el estado en el cuerpo de la solicitud
 
     try {
-        // Validación de los valores permitidos para el estado
         const validStates = ["EMITIDO"];
         if (!validStates.includes(estado)) {
             res.status(400).json({ error: `El estado debe ser: ${validStates.join(", ")}` });
-            return 
+            return;
         }
 
-        // Si el estado es "EMITIDO", generamos el siguiente número de formulario con el prefijo "I-"
-        let updatedNroFormulario: string | null = null;
+        // Usamos una transacción para asegurar que todo se ejecute de manera atómica
+        const result = await prisma.$transaction(async (prisma) => {
+            // Buscar el formulario actual
+            const form = await prisma.formInt.findUnique({
+                where: { id: formId },
+            });
 
-        if (estado === "EMITIDO") {
-            // Generamos el siguiente número con el prefijo "I-" solo si el estado es EMITIDO
-            updatedNroFormulario = await generateFormNumbers(estado); // Ahora solo pasamos el estado
-        }
+            if (!form) {
+                throw new Error('Formulario no encontrado');
+            }
 
-        // Datos a actualizar en el modelo FormInt
-        const fecha_creacion = new Date();
-        const fecha_vencimiento = new Date(fecha_creacion);
-        fecha_vencimiento.setDate(fecha_creacion.getDate() + 4); // Añadimos 4 días
+            // Si el estado es "EMITIDO", aseguramos que el formulario no esté ya en estado "EMITIDO"
+            if (estado === "EMITIDO") {
+                if (form.estado === "EMITIDO") {
+                    throw new Error('El formulario ya está en estado EMITIDO.');
+                }
 
-        const dataToUpdate: any = {
-            estado,
-            nro_formulario: updatedNroFormulario || undefined, // Asignamos el nuevo número solo si lo generamos
-            fecha_creacion: fecha_creacion,
-            fecha_vencimiento: fecha_vencimiento
-        };
+                // Validamos si el formulario está en un estado válido para pasar a "EMITIDO" (por ejemplo, "GENERADO")
+                if (form.estado !== "GENERADO") {
+                    throw new Error(`El formulario solo puede pasar a estado 'EMITIDO' si está en estado 'GENERADO'. Estado actual: ${form.estado}`);
+                }
 
-        // Si han pasado más de 4 días desde la fecha de creación, actualizamos el estado a "VENCIDO"
-        if (new Date() > fecha_vencimiento) {
-            dataToUpdate.estado = "VENCIDO"; // Cambiamos el estado a VENCIDO
-        }
+                // Generamos el siguiente número de formulario con el prefijo "E-" solo si el estado es "EMITIDO"
+                const updatedNroFormulario = await generateFormNumbers(estado);
 
-        // Actualizamos el formulario principal
-        const formint = await prisma.formInt.update({
-            where: { id: formId },
-            data: dataToUpdate,
+                // Datos a actualizar en el formulario
+                const fecha_creacion = new Date();
+                const fecha_vencimiento = new Date(fecha_creacion);
+                fecha_vencimiento.setDate(fecha_creacion.getDate() + 4); // Añadimos 4 días
+
+                // Si han pasado más de 4 días desde la fecha de creación, actualizamos el estado a "VENCIDO"
+                const dataToUpdate: any = {
+                    estado,
+                    nro_formulario: updatedNroFormulario,
+                    fecha_creacion,
+                    fecha_vencimiento,
+                };
+
+                if (new Date() > fecha_vencimiento) {
+                    dataToUpdate.estado = "VENCIDO"; // Cambiamos el estado a VENCIDO
+                }
+
+                // Actualizamos el formulario con los nuevos datos
+                const formint = await prisma.formInt.update({
+                    where: { id: formId },
+                    data: dataToUpdate,
+                });
+
+                return formint; // Devolvemos el formulario actualizado
+            }
+
+            // Si no es "EMITIDO", solo se actualiza el estado sin generar un nuevo número
+            const dataToUpdate: any = { estado };
+            const formint = await prisma.formInt.update({
+                where: { id: formId },
+                data: dataToUpdate,
+            });
+            return formint; // Devolvemos el formulario actualizado
         });
-
         // Responder con el estado actualizado y el formulario modificado
         res.status(200).json({
             message: 'Estado actualizado',
-            form: formint, // Devolvemos el formulario actualizado
+            form: result, // Devolvemos el formulario actualizado
         });
 
     } catch (error: any) {
         // Manejo de errores según el tipo de error
-        if (error?.code === 'P2025') {
-            res.status(404).json('Formulario no encontrado');
+        if (error.message === 'Formulario no encontrado') {
+            res.status(404).json({ error: 'Formulario no encontrado' });
+        } else if (error.message === 'El formulario ya está en estado EMITIDO.') {
+            res.status(400).json({ error: 'El formulario ya está en estado EMITIDO.' });
+        } else if (error.message.includes("El formulario solo puede pasar")) {
+            res.status(400).json({ error: error.message });
         } else {
             console.error(error);
             res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
         }
     }
 };
+
 export const deleteForms = async (req: Request, res: Response): Promise<void> => {
     const formintId = parseInt(req.params.id)
     try {
