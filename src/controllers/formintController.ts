@@ -739,6 +739,7 @@ export const getFormintByNroFormulariosPDF = async (req: Request, res: Response)
         res.status(500).json({ error: 'Hubo un error, pruebe más tarde' });
     }
 };
+
 export const getFormintHash = async (req: Request, res: Response): Promise<void> => {
     try {
         const forminthash = req.query.hash ? String(req.query.hash) : null;
