@@ -14,5 +14,5 @@ router.get('/operador/:id', authenticateToken,authorizePermission('formcooperati
 router.put('/:id', authenticateToken,authorizePermission('update_formcooperativa'), updateForms);
 router.put('/emitir/:id', authenticateToken,authorizePermission('issue_formcooperativa'), updateEstado);
 router.put('/anular/:id', authenticateToken,authorizePermission('annular_formcooperativa'), updateFormsAnulacion);
-router.delete('/:id', authenticateToken,authorizePermission('delete_formcoopetativa'),deleteForms);
+router.delete('/:id', authenticateToken,authorizePermission('delete_formcooperativa'),deleteForms);
 export default router;
